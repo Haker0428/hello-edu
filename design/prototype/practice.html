@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>练习生成 · AI 自适应教学平台</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+.pl-panel{position:sticky;top:72px}
+.strategy-row{display:flex;align-items:center;gap:8px;padding:6px 0}
+.strategy-row .sn{width:76px;font-size:12.5px}
+.obj-chip{border:1px solid var(--border);border-radius:8px;padding:4px 12px;font-size:12.5px;cursor:pointer;background:rgba(16,24,44,.55);color:var(--t2);transition:all .18s}
+.obj-chip.on{border-color:var(--primary);background:var(--primary-weak);color:var(--primary);font-weight:600}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">🎓 <em>自适应教学平台</em></div>
+    <div class="side-class"><b>初一(3)班 · 数学</b><br>人教版七年级上册 · 42 名学生</div>
+    <nav>
+      <a href="index.html">◉ 教学首页</a>
+      <a href="heatmap.html">▦ 班级知识热力图</a>
+      <a href="student.html">👤 学生画像</a>
+      <div class="nav-group">数据接入</div>
+      <a href="paper.html">📄 试卷接入 <span class="dot" title="4 题待确认"></span></a>
+      <a href="score-import.html">📊 成绩导入</a>
+      <a href="bank.html">🗂 题库管理</a>
+      <div class="nav-group">教学动作</div>
+      <a href="practice.html" class="active">✎ 练习生成</a>
+      <a href="paper-editor.html">📝 试卷编辑器</a>
+    </nav>
+    <div class="side-foot">P1 原型 v0.1 · 2026-09-30</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <h1>练习生成</h1><span class="sub">Practice Planner（练什么） + Question Selector（用哪些题）</span>
+      <div class="spacer"></div>
+      <div class="avatar">王</div>
+      <div class="who">王老师<small>学科教师 · 数学</small></div>
+    </div>
+
+    <div class="content">
+      <div class="callout blue" id="ctx-banner" style="display:none;margin-bottom:14px"></div>
+      <div class="grid" style="grid-template-columns:340px 1fr;gap:20px">
+
+        <!-- 左：策略配置 -->
+        <div class="pl-panel">
+          <div class="card">
+            <h3>🎛 练习对象</h3>
+            <div class="row" style="flex-wrap:wrap">
+              <span class="obj-chip on">整个班级</span>
+              <span class="obj-chip" onclick="toast('原型演示：按异常名单选择（如 12 名移项薄弱学生）')">选中学生（12）</span>
+            </div>
+            <div class="tiny" style="margin-top:8px">个性化题按每生画像分别生成；统一题全班相同。</div>
+          </div>
+
+          <div class="card">
+            <h3>📐 题量与配比<span class="more tiny">默认教师策略模板</span></h3>
+            <div class="form-row"><label>总题量</label>
+              <div class="row"><div class="stepper"><button onclick="stepN('total',-1)">−</button><span id="n-total">10</span><button onclick="stepN('total',1)">+</button></div>
+              <span class="tiny">道</span></div></div>
+            <div class="strategy-row"><span class="sn">薄弱知识</span><div class="stepper"><button onclick="stepN('a',-1)">−</button><span id="n-a">5</span><button onclick="stepN('a',1)">+</button></div><span class="tiny" style="color:var(--risk-high)">50%</span></div>
+            <div class="strategy-row"><span class="sn">前置知识</span><div class="stepper"><button onclick="stepN('b',-1)">−</button><span id="n-b">2</span><button onclick="stepN('b',1)">+</button></div><span class="tiny">20%</span></div>
+            <div class="strategy-row"><span class="sn">当前教学</span><div class="stepper"><button onclick="stepN('c',-1)">−</button><span id="n-c">2</span><button onclick="stepN('c',1)">+</button></div><span class="tiny">20%</span></div>
+            <div class="strategy-row"><span class="sn">历史复习</span><div class="stepper"><button onclick="stepN('d',-1)">−</button><span id="n-d">1</span><button onclick="stepN('d',1)">+</button></div><span class="tiny">10%</span></div>
+            <div class="tiny" id="sum-hint" style="margin-top:6px">✓ 配比合计 = 总题量</div>
+            <div class="tiny muted" style="margin-top:4px">教师策略优先于算法：配比、题量、难度始终由您控制。</div>
+          </div>
+
+          <div class="card">
+            <h3>🧩 公共 / 个性化比例</h3>
+            <div class="row"><b class="small" id="common-v">60%</b><span class="tiny">统一题</span>
+              <input type="range" min="0" max="100" step="10" value="60" id="common-r" style="flex:1" oninput="onCommon(this.value)">
+              <b class="small" id="pers-v">40%</b><span class="tiny">个性化</span></div>
+            <div class="tiny" style="margin-top:6px">Homework = Common + Personalized · 既保留班级教学节奏，又照顾个体差异。</div>
+          </div>
+
+          <div class="card">
+            <h3>🎚 自适应难度</h3>
+            <div class="small" style="margin-bottom:6px">目标成功率 <b>≈ 70%</b></div>
+            <div class="tiny muted">按学生当前 Mastery 选题：连续正确→难度上调；连续错误→下调并切换前置诊断。目标不是全对，也不是持续受挫。</div>
+          </div>
+
+          <div class="card">
+            <h3>🛡 选题约束（自动）</h3>
+            <div class="tiny muted" style="line-height:1.9">
+              · 已排除近 14 天曝光题 <b>118</b> 道（去重）<br>
+              · 优先复现「做错且未重测」<b>3</b> 题<br>
+              · 复习桶按间隔表 1d/3d/7d/14d 排序<br>
+              · 题量不足时降级提示，<b>不擅自 AI 出题</b>（变式生成 P3 开启）
+            </div>
+          </div>
+        </div>
+
+        <!-- 右：练习卷预览 -->
+        <div>
+          <div class="row" style="margin-bottom:12px">
+            <h3 style="font-size:14px">📄 练习卷预览<span class="tiny" style="font-weight:400;margin-left:8px">演示：李想 的个性化卷（42 生每人一份，统一题相同）</span></h3>
+            <div style="flex:1"></div>
+            <button class="btn sm ghost" onclick="regen()">↻ 重新生成</button>
+          </div>
+          <div class="sheet">
+            <div class="sh-head">
+              <h2>个性化练习 · 一元一次方程（三）</h2>
+              <div class="meta">班级：初一(3)班　姓名：李想　日期：____年____月____日　用时：____分钟</div>
+            </div>
+            <div class="sh-sec">
+              <h5>第一部分 · 统一练习（课堂节奏，全班相同）</h5>
+              <div id="sec-common"></div>
+            </div>
+            <div class="sh-sec">
+              <h5>第二部分 · 个性化练习（依据画像生成）</h5>
+              <div id="sec-pers"></div>
+            </div>
+            <div class="tiny" style="text-align:center;margin-top:14px;color:var(--t3)">— 完成后由教师批改导入，系统将自动更新画像并安排再评估 —</div>
+          </div>
+          <div class="row" style="margin-top:16px">
+            <button class="btn" onclick="toast('原型演示：导出 42 份 PDF（每生一份，打印友好）')">⬇ 导出 PDF（42 份 · 每生一份）</button>
+            <button class="btn ghost" onclick="toast('原型演示：导出 Word 版')">导出 Word</button>
+            <button class="btn ghost" onclick="toast('已记录为作业，等待成绩回流（闭环：练习 → 再评估）')">📋 记录为作业</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="mock.js"></script>
+<script>
+/* 题池（按知识点，难度 1-5，来源） */
+const POOL={
+ '去分母':[['解方程：(x-1)/3=(2x+1)/2',2],['解方程：x/2-(x-1)/3=1',2],['解方程：(3y+1)/4-1=(2y-1)/3',3],['解方程：2(x-1)/5=x+2/3',3]],
+ '方程求解综合':[['解方程：2(x-3)=3(x+1)-6',3],['解方程：3(x-2)-2(x+1)=2x+1',3],['解方程：(2x-1)/4-1=x-(2x+1)/3',4]],
+ '实际问题列方程':[['某数的 3 倍比它大 5，求这个数',2],['男生比女生多 1/5，共 66 人，求女生人数',3]],
+ '移项':[['解方程：3x+5=2x-1',1],['解方程：7x-3=4x+6',1],['解方程：5-2x=8+x',2],['解方程：9x-8=7x+2',2]],
+ '去括号':[['化简：2(3x-4)-3(x+2)',2],['去括号：-(2x-5)+3(x-1)',1],['化简：3(2a-b)-2(3a-2b)',2]],
+ '整式运算':[['化简：3a²b-2ab²+a²b',1],['合并：4x²-3x+2x²+x-1',2]],
+ '有理数运算':[['计算：(-12)+7×(-3)',1],['计算：(-2)³-(-6)÷3',2]],
+};
+const STATE={total:10,a:5,b:2,c:2,d:1,common:60};
+
+function dots(d){return '●'.repeat(d)+'○'.repeat(5-d)}
+function qItem(no,kp,info,extra=''){
+ return `<div class="q-item"><span class="no">${no}.</span><span class="stem">${info[0]}</span>
+  <span class="qmeta"><span class="tag gray">${kp}</span><span class="dots" title="难度">${dots(info[1])}</span>${extra}</span></div>`;
+}
+const picks={}; /* 每类当前索引 */
+function renderSheet(){
+ /* 统一 6 题：当前教学（去分母 3 + 综合 2 + 应用 1） */
+ let no=1,html='';
+ const uni=[['去分母',3],['方程求解综合',2],['实际问题列方程',1]];
+ uni.forEach(([kp,cnt])=>{picks['u'+kp]=picks['u'+kp]||0;
+   for(let j=0;j<cnt;j++){const pool=POOL[kp];const idx=(picks['u'+kp]+j)%pool.length;
+     html+=qItem(no++,kp,pool[idx]);}});
+ document.getElementById('sec-common').innerHTML=html;
+ /* 个性化 4 题（李想画像：移项弱×2（含 1 错题重现）、前置 去括号×1、整式运算×1） */
+ no=1;html='';
+ const per=[['移项',1,'',''],['移项',1,'','<span class="tag amber" title="09-26 月考做错，间隔重复复现">↻ 错题重现</span>'],
+            ['去括号',1,'<span class="tag blue" title="前置链断点诊断">前置</span>',''],['整式运算',1,'<span class="tag blue" title="前置链断点诊断">前置</span>','']];
+ per.forEach(([kp,_,tag,extra])=>{picks['p'+kp]=picks['p'+kp]||0;
+   const pool=POOL[kp];const idx=picks['p'+kp]%pool.length;
+   html+=qItem(no++,kp,pool[idx],extra+
+     `<button class="btn sm ghost" style="margin-left:6px" onclick="swap('p${kp}','${kp}')">换一题</button>`);});
+ document.getElementById('sec-pers').innerHTML=html;
+}
+function swap(key,kp){picks[key]=(picks[key]+1)%POOL[kp].length;renderSheet();toast('已换题（自动保持难度带与去重约束）')}
+function regen(){Object.keys(picks).forEach(k=>picks[k]++);renderSheet();toast('已按当前策略重新生成')}
+
+/* 配比联动 */
+function stepN(k,d){
+ if(k=='total'){STATE.total=Math.min(20,Math.max(4,STATE.total+d));}
+ else{STATE[k]=Math.max(0,STATE[k]+d);if(d>0)STATE.total=STATE.a+STATE.b+STATE.c+STATE.d;}
+ refreshN();
+}
+function refreshN(){
+ document.getElementById('n-total').textContent=STATE.total;
+ ['a','b','c','d'].forEach(k=>document.getElementById('n-'+k).textContent=STATE[k]);
+ const sum=STATE.a+STATE.b+STATE.c+STATE.d,hint=document.getElementById('sum-hint');
+ if(sum==STATE.total){hint.innerHTML='✓ 配比合计 = 总题量';hint.style.color='var(--risk-ok)';}
+ else{hint.innerHTML=`⚠ 配比合计 ${sum} ≠ 总题量 ${STATE.total}`;hint.style.color='var(--risk-high)';}
+}
+function onCommon(v){STATE.common=+v;document.getElementById('common-v').textContent=v+'%';document.getElementById('pers-v').textContent=(100-v)+'%'}
+refreshN();renderSheet();
+/* 承接异常卡/画像页带入的上下文（?ctx=） */
+const _ctx=new URLSearchParams(location.search).get('ctx');
+if(_ctx){const b=document.getElementById('ctx-banner');b.style.display='';
+  b.innerHTML=`📌 来自异常卡/画像的上下文：<b>${_ctx}</b> —— 已按「薄弱知识优先」预置配比，可在左侧调整后生成。`}
+</script>
+</body>
+</html>

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>学生画像 · AI 自适应教学平台</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">🎓 <em>自适应教学平台</em></div>
+    <div class="side-class"><b>初一(3)班 · 数学</b><br>人教版七年级上册 · 42 名学生</div>
+    <nav>
+      <a href="index.html">◉ 教学首页</a>
+      <a href="heatmap.html">▦ 班级知识热力图</a>
+      <a href="student.html" class="active">👤 学生画像</a>
+      <div class="nav-group">数据接入</div>
+      <a href="paper.html">📄 试卷接入 <span class="dot" title="4 题待确认"></span></a>
+      <a href="score-import.html">📊 成绩导入</a>
+      <a href="bank.html">🗂 题库管理</a>
+      <div class="nav-group">教学动作</div>
+      <a href="practice.html">✎ 练习生成</a>
+      <a href="paper-editor.html">📝 试卷编辑器</a>
+    </nav>
+    <div class="side-foot">P1 原型 v0.1 · 2026-09-30</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <h1>学生画像</h1>
+      <div class="spacer"></div>
+      <select class="select" id="stu-sel"></select>
+      <div class="avatar">王</div>
+      <div class="who">王老师<small>学科教师 · 数学</small></div>
+    </div>
+
+    <div class="content">
+      <!-- 画像头部 -->
+      <div class="card" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <div class="avatar" style="width:46px;height:46px;font-size:17px" id="hd-ava"></div>
+        <div>
+          <div style="font-size:17px;font-weight:700" id="hd-name"></div>
+          <div class="tiny" id="hd-meta"></div>
+        </div>
+        <div style="flex:1"></div>
+        <button class="btn" onclick="toast('原型演示：进入练习生成（已带入该生画像）')">✎ 生成个性化练习</button>
+        <button class="btn ghost" onclick="toast('原型演示：记录干预（P2 模块：干预方式 → 追踪 → 效果判定）')">📋 记录干预</button>
+      </div>
+
+      <div class="grid g4" id="ov-stats"></div>
+
+      <div class="grid g-main">
+        <div>
+          <!-- Knowledge 维度 -->
+          <div class="card">
+            <h3>📘 知识掌握（Knowledge）<span class="tag green">数据完整</span>
+              <span class="more tiny">点击知识点行展开证据链</span></h3>
+            <div id="kp-groups"></div>
+          </div>
+
+          <!-- 前置链 -->
+          <div class="card">
+            <h3>🔗 前置知识链诊断</h3>
+            <div class="chain" id="chain" style="font-size:13px"></div>
+            <div class="tiny" id="chain-note" style="margin-top:8px"></div>
+          </div>
+
+          <!-- 趋势 -->
+          <div class="card">
+            <h3>📈 「移项」掌握度趋势<span class="more tiny">学生 vs 班级平均 · 近 5 次评估</span></h3>
+            <svg viewBox="0 0 640 150" style="width:100%;height:150px" id="trend"></svg>
+          </div>
+
+          <!-- Skill（降级） -->
+          <div class="card">
+            <h3>🧩 能力维度（Skill）<span class="tag amber">推测 · 低置信</span></h3>
+            <div id="skills"></div>
+            <div class="callout amber" style="margin-top:10px">⚠ 当前数据源为逐题对错/得分，能力维度基于「知识点→能力标签」静态映射<b>间接推测</b>，仅供排序参考。接入作答时间与得分点数据后自动校准。</div>
+          </div>
+
+          <!-- Error Pattern（P1 不可用） -->
+          <div class="card">
+            <h3>❌ 错误模式（Error Pattern）</h3>
+            <div class="empty">
+              该维度需要<b>解题过程数据</b>（步骤得分点 / 手写识别）后开放<br>
+              <span class="tiny">当前数据源：Excel 逐题得分 · 知识点与错误模式是两套独立体系（如「移项」是 Knowledge，「移项后未变号」是 Error Pattern）</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右栏 -->
+        <div>
+          <div class="card">
+            <h3>🚨 关注原因</h3>
+            <div class="small" id="reasons"></div>
+          </div>
+          <div class="card">
+            <h3>🕑 干预记录<span class="more tiny">P2 预览</span></h3>
+            <div class="tl">
+              <div class="tl-i ok"><b>10-12 专项练习 · 移项</b><br><span class="tiny muted">移项 42% → 56%（追踪 14 天）· 判定：有效</span></div>
+              <div class="tl-i"><b>10-28 课堂提问 · 去分母</b><br><span class="tiny muted">效果追踪中，11-11 出判定</span></div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>🕘 最近作答</h3>
+            <div class="small" id="recent"></div>
+          </div>
+          <div class="card">
+            <h3>🗄 数据来源</h3>
+            <div class="small muted">月考 ×2 · 作业 12 次 · 练习卷 3 次<br>共 <b id="ev-total"></b> 条作答证据 · 首条 09-12</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="mock.js"></script>
+<script>
+let CUR=Math.max(0,Math.min(41,parseInt(new URLSearchParams(location.search).get('student'))||0)); /* 支持 ?student= 直达，默认李想 */
+
+function render(){
+  const s=STUDENTS[CUR];
+  document.getElementById('hd-ava').textContent=s.name[0];
+  document.getElementById('hd-name').textContent=s.name;
+  document.getElementById('hd-meta').textContent=`初一(3)班 · 学号 202531${String(CUR+1).padStart(2,'0')} · 数据截至 10-28`;
+
+  const valid=s.cells.filter(Boolean);
+  const avg=Math.round(valid.reduce((a,c)=>a+c.m,0)/valid.length);
+  const weak=valid.filter(c=>c.m<40).length;
+  const review=valid.filter(c=>c.m>=75&&c.c<55).length;
+  const rank=STUDENTS.filter(x=>x.cells.filter(Boolean).reduce((a,c)=>a+c.m,0)/x.cells.filter(Boolean).length>avg).length+1;
+  document.getElementById('ov-stats').innerHTML=`
+    <div class="stat"><div class="v">${avg}</div><div class="l">综合掌握度</div></div>
+    <div class="stat"><div class="v">${rank}/42</div><div class="l">班级排名（按掌握度）</div></div>
+    <div class="stat warn"><div class="v">${weak}</div><div class="l">未掌握知识点（M&lt;40）</div></div>
+    <div class="stat"><div class="v">${review}</div><div class="l">遗忘风险（M≥75 且 C&lt;55）</div></div>`;
+
+  /* Knowledge 分章节 */
+  const groups={};
+  KPS.forEach((k,ki)=>{(groups[k.ch]=groups[k.ch]||[]).push({...k,ki})});
+  document.getElementById('kp-groups').innerHTML=Object.entries(groups).map(([ch,list])=>`
+    <div style="margin-bottom:6px"><div class="tiny" style="padding:4px 0">${ch}</div>
+    ${list.map(k=>{
+      const c=s.cells[k.ki];
+      if(!c)return `<div class="row" style="padding:7px 0;border-bottom:1px solid rgba(148,170,220,.1)">
+        <span class="small" style="width:110px">${k.name}</span><span class="lvl none">未学习</span></div>`;
+      const lv=levelOf(c.m);
+      return `<div style="padding:7px 0;border-bottom:1px solid rgba(148,170,220,.1)">
+        <div class="row" style="cursor:pointer" onclick="this.nextElementSibling.classList.toggle('open')">
+          <span class="small" style="width:110px">${k.name}</span>
+          <div class="bar"><i style="width:${c.m}%;background:var(--m-${lv.key})"></i></div>
+          <b class="small" style="width:26px;text-align:right">${c.m}</b>
+          <span class="lvl ${lv.key}">${lv.label}</span>
+          <span class="tag ${c.c<55?'amber':'gray'}" title="系统对该判断的确定程度">C ${c.c}</span>
+          <span class="tiny" style="width:52px;text-align:right">${c.n} 条证据 ▾</span>
+        </div>
+        <div style="display:none;padding:6px 0 4px 120px" class="evbox">
+          ${evidenceFor(CUR,k.ki).map(e=>`<div class="ev"><div class="top"><span class="tag gray">${e.date}</span><span class="tag blue">${e.src}</span><b style="margin-left:auto">${e.score}/${e.max}</b></div><div class="stem">${e.stem}</div><div class="tiny">E=${e.E} · α=${e.alpha}</div></div>`).join('')}
+        </div></div>`;
+    }).join('')}</div>`).join('');
+
+  /* 前置链（沿 移项 主链） */
+  const chain=prereqChain(5);
+  let brk=null;
+  document.getElementById('chain').innerHTML=chain.map(ci=>{
+    const cc=s.cells[ci],mm=cc?cc.m:null;
+    if(brk===null&&mm!=null&&mm<60&&ci!=5)brk=ci;
+    return `<span class="node ${brk==ci?'brk':''}">${KPS[ci].name} <b>${mm==null?'—':mm}</b>${brk==ci?' ⚠':''}</span>`;
+  }).join('<span class="arr">→</span>');
+  document.getElementById('chain-note').innerHTML=brk!=null
+    ?`⚠ 前置断点：<b>${KPS[brk].name}（${s.cells[brk].m}%）</b>。「移项」薄弱的根因大概率在前置——建议先生成前置诊断练习，而不是反复刷移项题。`
+    :`前置链健康，薄弱原因更可能在当前知识点本身。`;
+
+  /* 趋势双线 */
+  const stu=[74,61,52,45,38],cls=[78,76,74,71,68],dates=['09-12','09-19','09-26','10-11','10-28'];
+  const X=i=>60+i*(560/4),Y=v=>130-((v-20)/80)*100;
+  document.getElementById('trend').innerHTML=`
+    ${[30,50,70,90].map(v=>`<line x1="50" x2="630" y1="${Y(v)}" y2="${Y(v)}" stroke="rgba(96,150,230,.14)"/><text x="40" y="${Y(v)+4}" font-size="10" fill="#5b6f95" text-anchor="end">${v}</text>`).join('')}
+    <polyline points="${stu.map((v,i)=>X(i)+','+Y(v)).join(' ')}" fill="none" stroke="#ff5a60" stroke-width="2.2" style="filter:drop-shadow(0 0 5px rgba(255,90,96,.55))"/>
+    <polyline points="${cls.map((v,i)=>X(i)+','+Y(v)).join(' ')}" fill="none" stroke="#46597e" stroke-width="2" stroke-dasharray="5 4"/>
+    ${stu.map((v,i)=>`<circle cx="${X(i)}" cy="${Y(v)}" r="3.5" fill="#ff5a60" style="filter:drop-shadow(0 0 4px rgba(255,90,96,.7))"/><text x="${X(i)}" y="${Y(v)-10}" font-size="11" fill="#ff5a60" text-anchor="middle" font-weight="600">${v}</text><text x="${X(i)}" y="146" font-size="10" fill="#5b6f95" text-anchor="middle">${dates[i]}</text>`).join('')}
+    <line x1="50" x2="630" y1="130" y2="130" stroke="rgba(96,150,230,.25)"/>
+    <rect x="500" y="6" width="14" height="4" fill="#ff5a60" rx="2"/><text x="520" y="11" font-size="11" fill="#9db1d6">${s.name}</text>
+    <rect x="500" y="22" width="14" height="4" fill="#46597e" rx="2"/><text x="520" y="27" font-size="11" fill="#9db1d6">班级平均</text>`;
+
+  /* Skill 推测（叙事固定，仅默认学生有意义；切换学生时展示为待校准） */
+  const sk=CUR==0?[['计算能力',72],['逻辑推理',63],['阅读信息提取',58],['建模能力',44]]:null;
+  document.getElementById('skills').innerHTML=sk?sk.map(([n,v])=>`
+    <div class="row" style="padding:6px 0">
+      <span class="small" style="width:96px">${n}</span>
+      <div class="bar"><i style="width:${v}%;background:${v<50?'var(--m-weak)':'var(--m-skilled)'}"></i></div>
+      <b class="small" style="width:26px;text-align:right">${v}</b>
+      <span class="tag amber">推测</span></div>`).join('')
+    :`<div class="empty">切换学生后能力维度需重新计算（演示略）</div>`;
+
+  /* 右栏 */
+  document.getElementById('reasons').innerHTML=CUR==0?
+    `<div class="tl">
+      <div class="tl-i"><b>「移项」38% · 连续 5 次评估下滑</b><br><span class="tiny muted">规则：核心知识点 M&lt;40</span></div>
+      <div class="tl-i"><b>前置断点：去括号 44%</b><br><span class="tiny muted">规则：当前弱 + 前置链弱 → 先诊断前置</span></div>
+      <div class="tl-i"><b>分档：高风险</b></div>
+    </div>`:`<div class="small muted">当前学生无高风险异常${s.risk!='ok'?`，分档为「${RISKL[s.risk]}」`:''}</div>`;
+
+  let rec=[],total=0;
+  s.cells.forEach((c,ki)=>{if(c){total+=c.n;evidenceFor(CUR,ki).forEach(e=>rec.push({...e,kp:KPS[ki].name}))}});
+  rec.sort((a,b)=>b.date.slice(3)<a.date.slice(3)?-1:1);
+  document.getElementById('recent').innerHTML=rec.slice(0,5).map(e=>
+    `<div class="row" style="padding:5px 0;border-bottom:1px solid rgba(148,170,220,.1)">
+      <span class="tag gray">${e.date}</span><span class="tiny" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.stem}</span>
+      <b class="small">${e.score}/${e.max}</b></div>`).join('');
+  document.getElementById('ev-total').textContent=total;
+}
+
+/* 学生切换器 */
+document.getElementById('stu-sel').innerHTML=STUDENTS.map(s=>
+  `<option value="${s.i}" ${s.i==CUR?'selected':''}>${s.name}（${RISKL[s.risk]}）</option>`).join('');
+document.getElementById('stu-sel').onchange=e=>{CUR=+e.target.value;render()};
+
+/* 证据盒展开样式 */
+const st=document.createElement('style');
+st.textContent='.evbox.open{display:block!important}';
+document.head.appendChild(st);
+
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>题库管理 · AI 自适应教学平台</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+.bank-layout{display:grid;grid-template-columns:1fr 430px;gap:16px;align-items:start}
+.bl-head{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:10px}
+.tabs{display:inline-flex;border:1px solid var(--border);border-radius:9px;overflow:hidden}
+.tabs button{border:none;background:transparent;padding:5px 12px;font-size:12.5px;cursor:pointer;color:var(--t2);transition:all .18s}
+.tabs button+button{border-left:1px solid var(--border)}
+.tabs button.on{background:var(--grad);color:#fff;box-shadow:0 0 14px rgba(91,140,255,.4)}
+.qcard{border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-bottom:9px;cursor:pointer;
+  background:rgba(148,170,220,.04);transition:all .2s var(--ease)}
+.qcard:hover{border-color:var(--border-strong);transform:translateY(-2px)}
+.qcard.sel{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-weak),0 8px 24px rgba(91,140,255,.15)}
+.qc-top{display:flex;gap:6px;align-items:center;margin-bottom:5px;flex-wrap:wrap}
+.qc-top .id{font-size:11px;color:var(--t3)}
+.qc-stem{font-size:13px;line-height:1.55;color:var(--t1);margin-bottom:7px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.qc-kps{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.qc-meta{display:flex;gap:10px;margin-top:7px;font-size:11px;color:var(--t3);flex-wrap:wrap}
+.bank-detail{position:sticky;top:72px;max-height:calc(100vh - 92px);overflow-y:auto}
+.dt-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.dt-sec{margin-bottom:16px}
+.dt-sec h4{font-size:11.5px;color:var(--primary-2);font-weight:600;margin-bottom:8px;letter-spacing:.14em}
+.dt-stem{font-size:13.5px;line-height:1.7;background:rgba(148,170,220,.05);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--t1)}
+.dt-opts{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px;margin-top:8px;font-size:13px;padding-left:6px}
+.dt-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;font-size:12.5px}
+.kp-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(148,170,220,.1);font-size:12.5px}
+.kp-row .wbar{flex:1;height:6px;border-radius:99px;background:rgba(148,170,220,.14);overflow:hidden}
+.kp-row .step{width:20px;height:20px;border:1px solid var(--border);border-radius:5px;background:transparent;cursor:pointer;font-size:12px;color:var(--t2);line-height:1;transition:all .15s}
+.kp-row .step:hover{border-color:var(--primary);color:var(--primary)}
+.dp-row{display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 0}
+.dp-row span{width:64px;color:var(--t2)}
+.ver-item{font-size:12px;padding:5px 0;border-bottom:1px dashed rgba(148,170,220,.12);color:var(--t2)}
+details.ans summary{cursor:pointer;font-size:12.5px;color:var(--primary)}
+details.ans .body{font-size:12.5px;color:var(--t2);margin-top:6px;line-height:1.7;white-space:pre-wrap}
+.modal-mask{position:fixed;inset:0;background:rgba(4,8,18,.6);backdrop-filter:blur(5px);display:none;align-items:flex-start;justify-content:center;z-index:50;padding-top:60px}
+.modal-mask.on{display:flex}
+.modal{background:#0e1628;border:1px solid var(--border-strong);border-radius:14px;width:560px;max-height:80vh;
+  overflow-y:auto;padding:20px 22px;box-shadow:0 30px 80px rgba(0,0,0,.55),0 0 60px rgba(91,140,255,.1);
+  animation:fx-in .35s var(--ease)}
+.frm label{display:block;font-size:11.5px;color:var(--t2);margin:9px 0 4px}
+.frm .input,.frm textarea,.frm select{width:100%;font-size:13px}
+.frm textarea{resize:vertical;min-height:60px}
+
+/* 题卡 HUD 括角 */
+.qcard{position:relative}
+.qcard::before{content:'';position:absolute;left:-1px;top:-1px;width:9px;height:9px;
+  border-top:2px solid var(--hud-dim);border-left:2px solid var(--hud-dim);transition:all .25s}
+.qcard:hover::before,.qcard.sel::before{width:16px;height:16px;border-color:var(--hud);
+  filter:drop-shadow(0 0 5px var(--hud-dim))}
+/* 弹层括角 */
+.modal::before,.modal::after{content:'';position:absolute;width:16px;height:16px}
+.modal::before{top:-1px;left:-1px;border-top:2px solid var(--hud);border-left:2px solid var(--hud);filter:drop-shadow(0 0 6px var(--hud-dim))}
+.modal::after{bottom:-1px;right:-1px;border-bottom:2px solid var(--hud);border-right:2px solid var(--hud);filter:drop-shadow(0 0 6px var(--hud-dim))}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">🎓 <em>自适应教学平台</em></div>
+    <div class="side-class"><b>初一(3)班 · 数学</b><br>人教版七年级上册 · 42 名学生</div>
+    <nav>
+      <a href="index.html">◉ 教学首页</a>
+      <a href="heatmap.html">▦ 班级知识热力图</a>
+      <a href="student.html">👤 学生画像</a>
+      <div class="nav-group">数据接入</div>
+      <a href="paper.html">📄 试卷接入</a>
+      <a href="score-import.html">📊 成绩导入</a>
+      <a href="bank.html" class="active">🗂 题库管理</a>
+      <div class="nav-group">教学动作</div>
+      <a href="practice.html">✎ 练习生成</a>
+      <a href="paper-editor.html">📝 试卷编辑器</a>
+    </nav>
+    <div class="side-foot">P1 原型 v0.1 · 2026-09-30</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <h1>题库管理</h1><span class="sub">一题多知识点映射 · 五维难度 · 版本化 · 作答统计</span>
+      <div class="spacer"></div>
+      <button class="btn" onclick="openModal()">＋ 新建题目</button>
+      <div class="avatar">王</div>
+      <div class="who">王老师<small>学科教师 · 数学</small></div>
+    </div>
+
+    <div class="content" style="max-width:none">
+      <div class="grid g4">
+        <div class="stat"><div class="v" id="st-total"></div><div class="l">题目总数（本班可见）</div></div>
+        <div class="stat"><div class="v" id="st-kp"></div><div class="l">覆盖知识点</div></div>
+        <div class="stat"><div class="v" id="st-draft" style="color:var(--risk-watch)"></div><div class="l">草稿待处理</div></div>
+        <div class="stat"><div class="v" style="color:var(--risk-ok)">88%</div><div class="l">映射置信度均值</div></div>
+      </div>
+
+      <div class="bank-layout">
+        <!-- 左：题目列表 -->
+        <div class="card">
+          <div class="bl-head">
+            <div class="tabs" id="tabs">
+              <button data-v="" class="on">全部</button>
+              <button data-v="active">正常</button>
+              <button data-v="draft">草稿箱</button>
+            </div>
+            <input class="input" id="f-q" placeholder="搜索题干、知识点或答案…" style="flex:1;min-width:180px">
+            <select class="select" id="f-type"><option value="">题型</option><option value="choice">单选</option><option value="fill">填空</option><option value="solve">解答</option></select>
+            <select class="select" id="f-kp"><option value="">知识点</option></select>
+            <select class="select" id="f-src"><option value="">来源</option><option value="bank">标准题库</option><option value="exam_import">试卷导入</option><option value="manual">教师创建</option><option value="ai_variant">AI 变式</option></select>
+          </div>
+          <div class="tiny" style="margin-bottom:8px" id="list-count"></div>
+          <div id="qlist"></div>
+        </div>
+
+        <!-- 右：题目详情 -->
+        <div class="bank-detail card" id="detail"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 新建/编辑 弹层 -->
+<div class="modal-mask" id="mask" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <h3 style="font-size:15px;margin-bottom:4px" id="m-title">新建题目</h3>
+    <div class="tiny" style="margin-bottom:8px">保存后进入草稿箱；补齐知识点映射与答案后可启用</div>
+    <div class="frm">
+      <label>题型</label>
+      <select class="input" id="m-type" onchange="document.getElementById('m-opts').style.display=this.value==='choice'?'':'none'">
+        <option value="choice">单选题</option><option value="fill">填空题</option><option value="solve" selected>解答题</option>
+      </select>
+      <label>题干（填空用 ____ 表示空位）</label>
+      <textarea class="input" id="m-stem"></textarea>
+      <div id="m-opts" style="display:none">
+        <label>选项 A</label><input class="input" id="m-o0">
+        <label>选项 B</label><input class="input" id="m-o1">
+        <label>选项 C</label><input class="input" id="m-o2">
+        <label>选项 D</label><input class="input" id="m-o3">
+      </div>
+      <label>答案</label><input class="input" id="m-ans">
+      <label>知识点（可多选，Ctrl/Cmd 点击）</label>
+      <select class="input" id="m-kp" multiple size="4"></select>
+      <label>难度（1-5，综合）</label>
+      <select class="input" id="m-diff"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option></select>
+      <div class="row" style="margin-top:16px;justify-content:flex-end">
+        <button class="btn ghost" onclick="closeModal()">取消</button>
+        <button class="btn" onclick="saveModal()">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="mock.js"></script>
+<script>
+/* ============ 数据（对齐 04-question 模型：多知识点权重 / 五维难度 / 版本 / 曝光统计） ============ */
+const SRC_L={bank:'标准题库',exam_import:'试卷导入',manual:'教师创建',ai_variant:'AI 变式'};
+const TYPE_L={choice:'单选题',fill:'填空题',solve:'解答题'};
+const DIM_L=[['kl','知识层级'],['comp','计算复杂度'],['rea','推理复杂度'],['rd','文字理解']];
+
+const Q=[
+{id:1,type:'choice',stem:'下列方程中，是一元一次方程的是（　）',options:['x² − 2x = 3','2x − y = 5','3x + 6 = 9','1/x = 2'],answer:'C',
+ analysis:'一元一次方程需满足：只含一个未知数、未知数次数为 1、整式方程。\nA 次数为 2；B 含两个未知数；D 分母含未知数（分式方程）。',
+ kps:[{name:'一元一次方程概念',w:1,c:.98,s:'platform'}],d:{kl:1,comp:1,rea:2,rd:1},
+ src:'bank',ver:1,upd:'09-12',exp:{n:6,last:'10-18',rate:88}},
+{id:2,type:'choice',stem:'解方程 3x − 6 = 0，移项正确的是（　）',options:['3x = −6','3x = 6','−3x = 6','x = 6'],answer:'B',
+ analysis:'移项要变号：3x = 0 + 6，即 3x = 6。选 A 是典型"移项不变号"错误。',
+ kps:[{name:'移项',w:1,c:.95,s:'platform'}],d:{kl:1,comp:1,rea:1,rd:1},
+ src:'bank',ver:1,upd:'09-12',exp:{n:5,last:'10-18',rate:74}},
+{id:3,type:'choice',stem:'解方程 x/2 = (x−1)/3，去分母正确的是（　）',options:['3x = 2(x − 1)','2x = 3(x − 1)','x = 2(x − 1)','3x = 2x − 1'],answer:'A',
+ analysis:'两边同乘最简公分母 6：左 3x，右 2(x−1)。',
+ kps:[{name:'去分母',w:.8,c:.93,s:'platform'},{name:'等式性质',w:.2,c:.9,s:'platform'}],
+ d:{kl:2,comp:2,rea:2,rd:2},src:'bank',ver:1,upd:'09-12',exp:{n:4,last:'10-18',rate:69}},
+{id:4,type:'choice',stem:'某商品原价 a 元，涨价 20% 后售价为（　）',options:['0.2a','a + 20','1.2a','80% a'],answer:'C',
+ analysis:'涨价 20% 即变为原来的 (1+20%) 倍。',
+ kps:[{name:'实际问题列方程',w:1,c:.9,s:'platform'}],d:{kl:2,comp:1,rea:2,rd:3},
+ src:'bank',ver:1,upd:'09-12',exp:{n:3,last:'10-11',rate:64}},
+{id:5,type:'fill',stem:'方程 3x + 5 = 2x − 1 的解是 x = ____。',answer:'−6',
+ analysis:'移项：3x − 2x = −1 − 5 → x = −6。',
+ kps:[{name:'移项',w:.7,c:.96,s:'platform'},{name:'合并同类项',w:.3,c:.92,s:'platform'}],
+ d:{kl:1,comp:2,rea:1,rd:1},src:'bank',ver:1,upd:'09-12',exp:{n:7,last:'10-18',rate:71}},
+{id:6,type:'fill',stem:'去括号并化简：2(3x − 4) − 3(x + 2) = ____。',answer:'3x − 14',
+ analysis:'去括号：6x − 8 − 3x − 6 = 3x − 14。注意 −3 乘 (x+2) 时两项都要变号。',
+ kps:[{name:'去括号',w:.6,c:.94,s:'platform'},{name:'合并同类项',w:.4,c:.91,s:'platform'}],
+ d:{kl:2,comp:3,rea:2,rd:1},src:'bank',ver:1,upd:'09-12',exp:{n:5,last:'10-11',rate:57}},
+{id:7,type:'solve',stem:'解方程：2(x − 3) = 3(x + 1) − 6。',answer:'x = −3',
+ analysis:'去括号：2x − 6 = 3x + 3 − 6\n合并：2x − 6 = 3x − 3\n移项：−x = 3 → x = −3',
+ kps:[{name:'去括号',w:.4,c:.88,s:'teacher'},{name:'移项',w:.35,c:.92,s:'platform'},{name:'合并同类项',w:.25,c:.9,s:'platform'}],
+ d:{kl:2,comp:3,rea:2,rd:1},src:'exam_import',ver:2,upd:'09-28',exp:{n:3,last:'10-11',rate:58}},
+{id:8,type:'solve',stem:'解方程：(x − 1)/3 = (2x + 1)/2。',answer:'x = −5',
+ analysis:'去分母（×6）：2(x−1) = 3(2x+1)\n去括号：2x − 2 = 6x + 3\n移项合并：−4x = 5 → x = −5/4？\n复核：代入 x=−5/4 不成立，正确为 x = −5（教师修正过一次答案，见版本历史）。',
+ kps:[{name:'去分母',w:.5,c:.85,s:'teacher'},{name:'去括号',w:.25,c:.88,s:'platform'},{name:'移项',w:.25,c:.9,s:'platform'}],
+ d:{kl:3,comp:3,rea:3,rd:2},src:'exam_import',ver:2,upd:'09-28',exp:{n:2,last:'10-11',rate:45}},
+{id:9,type:'solve',stem:'某数的 3 倍比它本身大 5，求这个数。（设未知数、列方程并求解）',answer:'x = 2.5',
+ analysis:'设该数为 x：3x = x + 5 → 2x = 5 → x = 2.5。',
+ kps:[{name:'实际问题列方程',w:.6,c:.87,s:'platform'},{name:'移项',w:.4,c:.9,s:'platform'}],
+ d:{kl:3,comp:2,rea:3,rd:3},src:'exam_import',ver:1,upd:'09-20',exp:{n:2,last:'10-11',rate:52}},
+{id:10,type:'fill',stem:'当 x = ____ 时，代数式 4x − 7 与 3x + 2 的值相等。',answer:'9',
+ analysis:'4x − 7 = 3x + 2 → x = 9。',
+ kps:[{name:'移项',w:.6,c:.9,s:'teacher'},{name:'实际问题列方程',w:.4,c:.72,s:'ai'}],
+ d:{kl:2,comp:2,rea:2,rd:2},src:'manual',ver:1,upd:'10-15',exp:{n:1,last:'10-18',rate:81}},
+{id:11,type:'choice',stem:'计算 (−12) + 7 × (−3) 的结果是（　）',options:['−33','−9','33','9'],answer:'A',
+ analysis:'先乘后加：7×(−3) = −21，(−12)+(−21) = −33。',
+ kps:[{name:'有理数运算',w:1,c:.97,s:'platform'}],d:{kl:1,comp:2,rea:1,rd:1},
+ src:'bank',ver:1,upd:'09-12',exp:{n:6,last:'10-18',rate:83}},
+{id:12,type:'fill',stem:'计算：(-2)³ − (−6) ÷ 3 = ____。',answer:'−10',
+ analysis:'(-2)³ = −8；(−6)÷3 = −2；−8 − (−2) = −6…复核：−8 + 2 = −6。教学中发现学生常把 (-2)³ 算成 6，建议配合错误模式"符号错误"讲解。',
+ kps:[{name:'有理数运算',w:1,c:.95,s:'platform'}],d:{kl:1,comp:3,rea:2,rd:1},
+ src:'bank',ver:1,upd:'09-12',exp:{n:4,last:'10-11',rate:62}},
+{id:13,type:'solve',stem:'甲、乙两地相距 240 km，汽车从甲地出发以 80 km/h 的速度驶向乙地，出发多少小时后距离乙地还有 60 km？',answer:'2.25 小时',
+ analysis:'设 x 小时：80x + 60 = 240 → 80x = 180 → x = 2.25。',
+ kps:[{name:'行程问题',w:.7,c:.84,s:'platform'},{name:'实际问题列方程',w:.3,c:.8,s:'platform'}],
+ d:{kl:3,comp:3,rea:3,rd:4},src:'exam_import',ver:1,upd:'09-20',exp:null},
+/* —— 草稿箱 —— */
+{id:14,type:'solve',stem:'解方程：3(x + 2) − 2(x − 1) = 7。',answer:'待校验',
+ analysis:'',
+ kps:[{name:'去括号',w:.5,c:.62,s:'ai'},{name:'移项',w:.5,c:.66,s:'ai'}],
+ d:{kl:2,comp:2,rea:2,rd:1},src:'ai_variant',status:'draft',ver:1,upd:'10-27',exp:null,
+ note:'AI 变式题（母题 #7）：等待答案校验器 + 教师确认后启用'},
+{id:15,type:'fill',stem:'若关于 x 的方程 (a−2)x|a|−1 + 5 = 0 是一元一次方程，则 a = ____。',answer:'待补',
+ analysis:'',
+ kps:[{name:'一元一次方程概念',w:1,c:.9,s:'teacher'}],
+ d:{kl:3,comp:2,rea:3,rd:2},src:'manual',status:'draft',ver:1,upd:'10-26',exp:null,
+ note:'教师手动创建：待补答案与解析'},
+/* —— 已停用 —— */
+{id:16,type:'choice',stem:'下列各组数中，互为相反数的是（　）',options:['−2 与 1/2','2 与 −2','−2 与 −2','1/2 与 0.5'],answer:'B',
+ analysis:'只有符号不同的两个数互为相反数。',
+ kps:[{name:'有理数运算',w:1,c:.9,s:'platform'}],d:{kl:1,comp:1,rea:1,rd:2},
+ src:'bank',status:'retired',ver:1,upd:'09-05',exp:{n:2,last:'09-20',rate:79},note:'与教材进度不符，已停用'},
+];
+
+let CUR=null,tabV='',editId=null;
+const dots=d=>'●'.repeat(d)+'○'.repeat(5-d);
+const avgD=q=>Math.round((q.d.kl+q.d.comp+q.d.rea+q.d.rd)/4);
+
+/* ============ 列表 ============ */
+function renderList(){
+  const kw=document.getElementById('f-q').value.trim(),
+        ty=document.getElementById('f-type').value,
+        kp=document.getElementById('f-kp').value,
+        src=document.getElementById('f-src').value;
+  const st=tabV==='draft'?'draft':tabV||'';
+  const list=Q.filter(q=>
+    (st===''||q.status===st||(st==='active'&&!q.status))&&
+    (!ty||q.type===ty)&&(!kp||q.kps.some(k=>k.name===kp))&&(!src||q.src===src)&&
+    (!kw||q.stem.includes(kw)||q.answer.includes(kw)||q.kps.some(k=>k.name.includes(kw))));
+  document.getElementById('list-count').textContent=`共 ${list.length} 道题`;
+  document.getElementById('qlist').innerHTML=list.map(q=>`
+    <div class="qcard ${CUR===q.id?'sel':''}" onclick="select(${q.id})">
+      <div class="qc-top">
+        <span class="tag blue">${TYPE_L[q.type]}</span>
+        <span class="id">#${q.id}</span>
+        <span class="tag gray">${SRC_L[q.src]}</span>
+        ${q.status==='draft'?'<span class="tag amber">草稿</span>':q.status==='retired'?'<span class="tag red">已停用</span>':''}
+        <span class="dots" style="margin-left:auto" title="综合难度 ${avgD(q)}/5">${dots(avgD(q))}</span>
+      </div>
+      <div class="qc-stem">${q.stem}</div>
+      <div class="qc-kps">${q.kps.map(k=>`<span class="tag gray">${k.name} ${Math.round(k.w*100)}%</span>`).join('')}</div>
+      <div class="qc-meta">
+        <span>v${q.ver}</span><span>更新 ${q.upd}</span>
+        ${q.exp?`<span>曝光 ${q.exp.n} 次</span><span>班级正确率 ${q.exp.rate}%</span>`:'<span>未使用</span>'}
+      </div>
+    </div>`).join('')||'<div class="empty">无匹配题目</div>';
+  if(!list.find(q=>q.id===CUR)&&list.length)select(list[0].id,true);
+}
+
+/* ============ 详情 ============ */
+function renderDetail(){
+  const q=Q.find(x=>x.id===CUR);
+  if(!q){document.getElementById('detail').innerHTML='<div class="empty">选择左侧题目查看详情</div>';return}
+  document.getElementById('detail').innerHTML=`
+  <div class="dt-head">
+    <b style="font-size:14px">#${q.id} · ${TYPE_L[q.type]}</b>
+    ${q.status==='draft'?'<span class="tag amber">草稿</span>':q.status==='retired'?'<span class="tag red">已停用</span>':'<span class="tag green">正常</span>'}
+    <div style="flex:1"></div>
+    <button class="btn sm ghost" onclick="editQ(${q.id})">✎ 编辑</button>
+    <button class="btn sm ${q.status==='retired'?'':'ghost'}" onclick="toggleStatus(${q.id})">${q.status==='retired'?'恢复启用':'停用'}</button>
+  </div>
+  ${q.note?`<div class="callout amber" style="margin-bottom:12px">⚠ ${q.note}</div>`:''}
+  <div class="dt-sec">
+    <div class="dt-stem">${q.stem.replace(/____/g,'＿＿＿＿')}</div>
+    ${q.options?`<div class="dt-opts">${q.options.map((o,i)=>`<div><b>${'ABCD'[i]}.</b>　${o}</div>`).join('')}</div>`:''}
+  </div>
+  <div class="dt-sec">
+    <h4>参考答案与解析</h4>
+    ${q.answer&&q.answer!=='待校验'&&q.answer!=='待补'?`
+    <details class="ans" open><summary>【答案】${q.answer}</summary>
+      <div class="body">${q.analysis||'（解析待补充）'}</div></details>`:
+    `<div class="callout amber">${q.answer==='待校验'?'AI 变式题：等待答案校验器验证':'答案待补充，补齐后才可启用'}</div>`}
+  </div>
+  <div class="dt-sec">
+    <h4>知识点映射（教师可调权重，保存自动归一化）</h4>
+    ${q.kps.map((k,i)=>`
+      <div class="kp-row">
+        <span style="width:110px">${k.name}</span>
+        <div class="wbar"><i style="width:${k.w*100}%;height:100%;background:var(--primary);display:block"></i></div>
+        <b style="width:36px;text-align:right">${Math.round(k.w*100)}%</b>
+        <button class="step" onclick="adjW(${q.id},${i},-0.1)">−</button>
+        <button class="step" onclick="adjW(${q.id},${i},0.1)">＋</button>
+        <span class="tag ${k.c<.7?'amber':'gray'}" title="标注置信度">conf ${k.c}</span>
+        <span class="tiny">${k.s==='platform'?'平台':k.s==='teacher'?'教师':k.s==='ai'?'AI':'试卷'}</span>
+      </div>`).join('')}
+  </div>
+  <div class="dt-sec">
+    <h4>难度画像</h4>
+    ${DIM_L.map(([k,l])=>`<div class="dp-row"><span>${l}</span>
+      <div class="bar"><i style="width:${q.d[k]*20}%;background:var(--m-${q.d[k]>=3?'learning':'skilled'})"></i></div>
+      <b style="width:34px;text-align:right">${q.d[k]}/5</b></div>`).join('')}
+    <div class="dp-row"><span>涉及知识点</span><div class="bar"><i style="width:${q.kps.length*20}%;background:var(--m-learning)"></i></div><b style="width:34px;text-align:right">${q.kps.length}</b></div>
+  </div>
+  <div class="dt-sec">
+    <h4>使用统计（来自作答事件）</h4>
+    ${q.exp?`<div class="dt-grid">
+      <span>曝光次数：<b>${q.exp.n}</b></span><span>最近使用：<b>${q.exp.last}</b></span>
+      <span>班级正确率：<b>${q.exp.rate}%</b></span><span>近 14 天曝光：<b>${q.exp.n>0?'已占用':'无'}</b></span>
+    </div><div class="tiny" style="margin-top:4px">已曝光的题在个性化练习选题中自动去重（14 天窗口）</div>`:
+    '<span class="tiny">尚未被任何练习/考试使用</span>'}
+  </div>
+  <div class="dt-sec">
+    <h4>版本历史</h4>
+    ${Array.from({length:q.ver},(_,i)=>q.ver-i).map(v=>`
+      <div class="ver-item">v${v} ${v===q.ver?'（当前）':''} · ${v===q.ver?q.upd:'09-20 初次录入'}${v<q.ver&&q.id===8?' · 教师修正答案':''}${v<q.ver&&q.id===7?' · 教师调整知识点权重':''}</div>`).join('')}
+    <div class="tiny" style="margin-top:4px">历史作答事件锚定作答当时的版本，改题不丢历史</div>
+  </div>`;
+}
+
+/* ============ 交互 ============ */
+function select(id,quiet){CUR=id;renderList();renderDetail()}
+function adjW(id,i,d){
+  const q=Q.find(x=>x.id===id);
+  const k=q.kps[i];
+  const nw=Math.min(.9,Math.max(.1,k.w+d));
+  const rest=q.kps.filter((_,j)=>j!==i);
+  const restSum=rest.reduce((a,x)=>a+x.w,0)||1;
+  k.w=nw;rest.forEach(x=>x.w=Math.round(x.w*(1-nw)/restSum*100)/100);
+  renderDetail();toast('权重已调整（保存时归一化）');
+}
+function toggleStatus(id){
+  const q=Q.find(x=>x.id===id);
+  q.status=q.status==='retired'?'':'retired';
+  renderList();renderDetail();
+  toast(q.status==='retired'?'已停用：新选题不可见，历史可查':'已恢复启用');
+}
+function openModal(){editId=null;document.getElementById('m-title').textContent='新建题目';
+  ['m-stem','m-ans','m-o0','m-o1','m-o2','m-o3'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('m-opts').style.display='none';
+  document.getElementById('mask').classList.add('on')}
+function editQ(id){
+  const q=Q.find(x=>x.id===id);editId=id;
+  document.getElementById('m-title').textContent=`编辑题目 #${q.id}`;
+  document.getElementById('m-type').value=q.type;
+  document.getElementById('m-stem').value=q.stem;
+  document.getElementById('m-ans').value=q.answer==='待校验'||q.answer==='待补'?'':q.answer;
+  (q.options||['','','','']).forEach((o,i)=>document.getElementById('m-o'+i).value=o||'');
+  document.getElementById('m-opts').style.display=q.type==='choice'?'':'none';
+  document.getElementById('m-diff').value=avgD(q);
+  [...document.getElementById('m-kp').options].forEach(o=>o.selected=q.kps.some(k=>k.name===o.value));
+  document.getElementById('mask').classList.add('on');
+}
+function closeModal(){document.getElementById('mask').classList.remove('on')}
+function saveModal(){
+  const stem=document.getElementById('m-stem').value.trim();
+  if(!stem){toast('请填写题干');return}
+  const kps=[...document.getElementById('m-kp').selectedOptions].map(o=>o.value);
+  if(!kps.length){toast('至少选择一个知识点（画像归因依赖）');return}
+  const type=document.getElementById('m-type').value;
+  if(editId){
+    const q=Q.find(x=>x.id===editId);
+    q.stem=stem;q.type=type;q.answer=document.getElementById('m-ans').value||q.answer;
+    if(type==='choice')q.options=[0,1,2,3].map(i=>document.getElementById('m-o'+i).value||'');
+    q.kps=kps.map((n,i)=>({name:n,w:Math.round(100/kps.length)/100,c:.9,s:'teacher'}));
+    q.ver++;q.upd='10-28';toast(`已保存（生成 v${q.ver}，历史作答仍锚定旧版本）`);
+  }else{
+    const id=Math.max(...Q.map(x=>x.id))+1;
+    Q.unshift({id,type,stem,
+      options:type==='choice'?[0,1,2,3].map(i=>document.getElementById('m-o'+i).value||''):undefined,
+      answer:document.getElementById('m-ans').value||'待补',analysis:'',
+      kps:kps.map(n=>({name:n,w:Math.round(100/kps.length)/100,c:.9,s:'teacher'})),
+      d:{kl:2,comp:+document.getElementById('m-diff').value,rea:2,rd:1},
+      src:'manual',status:'draft',ver:1,upd:'10-28',exp:null,note:'教师手动创建：待补答案与解析'});
+    CUR=id;toast('已保存到草稿箱');
+  }
+  closeModal();renderStats();renderList();renderDetail();
+}
+
+/* ============ 初始化 ============ */
+function renderStats(){
+  const active=Q.filter(q=>!q.status||q.status==='active');
+  document.getElementById('st-total').textContent=Q.length;
+  document.getElementById('st-kp').textContent=new Set(Q.flatMap(q=>q.kps.map(k=>k.name))).size;
+  document.getElementById('st-draft').textContent=Q.filter(q=>q.status==='draft').length;
+}
+document.getElementById('tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  document.getElementById('tabs').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');tabV=b.dataset.v;renderList();
+});
+['f-q','f-type','f-kp','f-src'].forEach(id=>document.getElementById(id).addEventListener(id==='f-q'?'input':'change',renderList));
+[...new Set(Q.flatMap(q=>q.kps.map(k=>k.name)))].forEach(kp=>{
+  document.getElementById('f-kp').insertAdjacentHTML('beforeend',`<option>${kp}</option>`);
+  document.getElementById('m-kp').insertAdjacentHTML('beforeend',`<option>${kp}</option>`);
+});
+renderStats();select(7);
+</script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>教学首页 · AI 自适应教学平台</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">🎓 <em>自适应教学平台</em></div>
+    <div class="side-class"><b>初一(3)班 · 数学</b><br>人教版七年级上册 · 42 名学生</div>
+    <nav>
+      <a href="index.html" class="active">◉ 教学首页</a>
+      <a href="heatmap.html">▦ 班级知识热力图</a>
+      <a href="student.html">👤 学生画像</a>
+      <div class="nav-group">数据接入</div>
+      <a href="paper.html">📄 试卷接入 <span class="dot" title="4 题待确认"></span></a>
+      <a href="score-import.html">📊 成绩导入</a>
+      <a href="bank.html">🗂 题库管理</a>
+      <div class="nav-group">教学动作</div>
+      <a href="practice.html">✎ 练习生成</a>
+      <a href="paper-editor.html">📝 试卷编辑器</a>
+    </nav>
+    <div class="side-foot">P1 原型 v0.1 · 2026-09-30</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <h1>教学首页</h1><span class="sub">Exception-based · 只推异常与动作</span>
+      <div class="spacer"></div>
+      <select class="select"><option>初一(3)班</option><option>初一(5)班</option></select>
+      <div class="avatar">王</div>
+      <div class="who">王老师<small>学科教师 · 数学</small></div>
+    </div>
+
+    <div class="content">
+      <div class="grid g4">
+        <div class="stat"><div class="v" id="st-risk">4</div><div class="l">高风险学生</div></div>
+        <div class="stat"><div class="v" id="st-watch">9</div><div class="l">需关注学生</div></div>
+        <div class="stat"><div class="v" id="st-anomaly">8</div><div class="l">未处理异常</div></div>
+        <div class="stat"><div class="v" style="color:var(--risk-ok)">96%</div><div class="l">最近导入数据完整度（10-28 月考）</div></div>
+      </div>
+
+      <!-- Q1 今天班级有什么问题？ -->
+      <div class="q-head"><div class="q-chip">Q1</div><h2>今天班级有什么问题？</h2><span class="tiny">规则引擎自动识别 · <a href="heatmap.html">知识点视图</a></span></div>
+      <div class="grid g2">
+        <div class="card anomaly cls">
+          <div class="body">
+            <div class="t">「去分母」全班平均掌握 <b style="color:var(--risk-high)">54%</b>，38/42 人未达初步掌握</div>
+            <div class="d">最近一次月考相关题平均得分率 49%，且分布集中（非个别学生问题）。属于<b>全班性教学问题</b>，建议课堂重讲而非个别补差。</div>
+            <div class="meta">触发规则：知识点班级均值 &lt; 60 · 触发于 10-28 月考成绩导入</div>
+            <a class="btn sm" href="practice.html">生成课堂重讲配套练习</a>
+            <a class="btn sm ghost" href="heatmap.html?view=kp">查看知识点视图</a>
+          </div>
+        </div>
+        <div class="card anomaly gap">
+          <div class="body">
+            <div class="t">6 名学生在「整式运算 → 去括号 → 移项」前置链上存在断点</div>
+            <div class="d">
+              <span class="stu-chip">李想</span><span class="stu-chip">王雪</span><span class="stu-chip">陈杰</span><span class="stu-chip">杜淳</span><span class="stu-chip">江雪</span><span class="stu-chip">白露</span><br>
+              高层知识点表现差时反复刷题收效有限，建议先做<b>前置知识诊断</b>，定位真正断点。
+            </div>
+            <div class="meta">触发规则：当前章节弱 且 前置链某节点 &lt; 60</div>
+            <button class="btn sm" onclick="toast('原型演示：为 6 人生成前置诊断练习')">生成前置诊断练习（6 人）</button>
+            <a class="btn sm ghost" href="heatmap.html">查看热力图</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q2 哪些学生需要关注？ -->
+      <div class="q-head"><div class="q-chip">Q2</div><h2>哪些学生需要关注？</h2><span class="tiny">三档分档：正常 29 / 需关注 9 / 高风险 4 · 系统已把 42 人压缩为异常清单</span></div>
+      <div class="card" style="padding:6px 12px">
+        <table class="tb">
+          <thead><tr><th>学生</th><th>分档</th><th>核心问题</th><th style="width:110px">趋势（近 5 次评估）</th><th style="width:190px"></th></tr></thead>
+          <tbody id="stu-list"></tbody>
+        </table>
+      </div>
+
+      <!-- Q3 下一步应该做什么？ -->
+      <div class="grid g-main">
+        <div>
+          <div class="q-head" style="margin-top:6px"><div class="q-chip">Q3</div><h2>下一步应该做什么？</h2></div>
+          <div class="card" style="padding:6px 18px">
+            <div class="todo done"><span class="tdot"></span><span class="tt">导入 10-28《第三章月考》成绩（42 人 × 30 题）</span><span class="tag green">已完成 10-28 16:40</span></div>
+            <div class="todo pending"><span class="tdot"></span><span class="tt">确认《第三章月考》知识点标注 —— <b>4 题低置信待确认</b></span><a class="btn sm" href="paper.html">去处理</a></div>
+            <div class="todo"><span class="tdot"></span><span class="tt">发放「移项专项」练习 —— 12 人薄弱（M&lt;40）</span><a class="btn sm" href="practice.html">去生成</a></div>
+            <div class="todo"><span class="tdot"></span><span class="tt">安排复习检测 —— 3 人「有理数运算」存在遗忘风险（置信度 &lt; 55）</span><a class="btn sm ghost" href="heatmap.html">查看名单</a></div>
+          </div>
+        </div>
+        <div>
+          <div class="card" style="margin-top:38px">
+            <h3>📖 教学进度</h3>
+            <div class="small muted" style="margin-bottom:6px">第三章 · 一元一次方程</div>
+            <div class="row"><span class="tag blue">当前</span><span class="small">去分母（第 8-9 课时）</span></div>
+            <div class="row" style="margin-top:4px"><span class="tag gray">下一节</span><span class="small">系数化为 1</span></div>
+            <div class="tiny" style="margin-top:8px">本学期覆盖知识点 13 个 · 前置链完整</div>
+          </div>
+          <div class="card">
+            <h3>🩺 数据健康</h3>
+            <div class="small">最近导入：<b>10-28 月考</b> · 42 人 × 30 题</div>
+            <div class="tiny" style="margin:4px 0 8px">逐题得分完整率 96%（2 人缺第 25-28 题，已提示补录）</div>
+            <div class="callout amber">📏 下次建议导入：本周作业（周四）— 保持画像新鲜度</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="mock.js"></script>
+<script>
+/* 分档统计（由 mock 数据实时计算） */
+const cnt={high:0,watch:0,ok:0};STUDENTS.forEach(s=>cnt[s.risk]++);
+document.getElementById('st-risk').textContent=cnt.high;
+document.getElementById('st-watch').textContent=cnt.watch;
+
+/* Q2 学生清单（叙事写死：与人设对应的真实数据行） */
+const rows=[
+ {i:0, q:'移项 38% · 前置断点（去括号 44%）', tr:[62,58,52,45,38]},
+ {i:4, q:'5 个知识点未掌握 · 全面薄弱', tr:[52,49,44,42,37]},
+ {i:1, q:'前置断点：去括号 47%，整式运算 55%', tr:[70,66,60,55,51]},
+ {i:2, q:'遗忘风险：有理数运算 M86 / 置信度 48', tr:[85,85,86,86,86], ok:1},
+ {i:3, q:'应用题建模弱（38%）· 计算类保持熟练', tr:[58,55,52,48,44]},
+];
+document.getElementById('stu-list').innerHTML=rows.map(r=>{
+ const s=STUDENTS[r.i];
+ return `<tr>
+  <td><b>${s.name}</b></td>
+  <td><span class="badge-dot ${s.risk=='high'?'rh':'rw'}"></span> <span class="small">${RISKL[s.risk]}</span></td>
+  <td class="small muted">${r.q}</td>
+  <td>${sparkSVG(r.tr,90,26,r.ok?'#3e9b6d':'#e5484d')}</td>
+  <td style="text-align:right;white-space:nowrap">
+    <a class="btn sm" href="practice.html?ctx=${encodeURIComponent(r.q)}">生成练习</a>
+    <a class="btn sm ghost" href="student.html?student=${r.i}">画像</a>
+  </td></tr>`;
+}).join('');
+</script>
+</body>
+</html>

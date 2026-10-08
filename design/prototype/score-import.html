@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>成绩导入 · AI 自适应教学平台</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">🎓 <em>自适应教学平台</em></div>
+    <div class="side-class"><b>初一(3)班 · 数学</b><br>人教版七年级上册 · 42 名学生</div>
+    <nav>
+      <a href="index.html">◉ 教学首页</a>
+      <a href="heatmap.html">▦ 班级知识热力图</a>
+      <a href="student.html">👤 学生画像</a>
+      <div class="nav-group">数据接入</div>
+      <a href="paper.html">📄 试卷接入 <span class="dot" title="4 题待确认"></span></a>
+      <a href="score-import.html" class="active">📊 成绩导入</a>
+      <a href="bank.html">🗂 题库管理</a>
+      <div class="nav-group">教学动作</div>
+      <a href="practice.html">✎ 练习生成</a>
+      <a href="paper-editor.html">📝 试卷编辑器</a>
+    </nav>
+    <div class="side-foot">P1 原型 v0.1 · 2026-09-30</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <h1>成绩导入</h1><span class="sub">逐题得分 · Level 1 数据接入（Excel）</span>
+      <div class="spacer"></div>
+      <div class="avatar">王</div>
+      <div class="who">王老师<small>学科教师 · 数学</small></div>
+    </div>
+
+    <div class="content" id="page">
+      <div class="steps">
+        <div class="step done"><span class="n">✓</span>选择考试</div>
+        <div class="step done"><span class="n">✓</span>上传 Excel</div>
+        <div class="step act"><span class="n">3</span>校验预览</div>
+        <div class="step"><span class="n">4</span>导入完成</div>
+      </div>
+
+      <div class="card row">
+        <span style="font-size:22px">📄</span>
+        <div><b class="small">初一3班_第三章月考_逐题得分.xlsx</b><div class="tiny">42 行 × 25 列 · 已按试卷确认结果自动生成模板</div></div>
+        <div style="flex:1"></div>
+        <button class="btn sm ghost" onclick="toast('原型演示：重新上传')">重新上传</button>
+      </div>
+
+      <div class="grid g3">
+        <div class="card" style="margin:0"><h3>① 名单匹配 <span class="tag green">通过</span></h3>
+          <div class="small">41 人精确匹配 · <b>1 人模糊匹配</b>（"王 雪"含空格 → 王雪）已自动处理</div></div>
+        <div class="card" style="margin:0"><h3>② 分值范围 <span class="tag amber">1 处异常</span></h3>
+          <div class="small">1,049 个得分点通过 · 1 处超出题目满分，见下方修正</div></div>
+        <div class="card" style="margin:0"><h3>③ 完整性 <span class="tag amber">1 处缺失</span></h3>
+          <div class="small">缺 2 人 × 4 题（请假）· 可标记"未参加"后继续</div></div>
+      </div>
+
+      <div class="q-head"><div class="q-chip" style="background:var(--risk-watch)">!</div><h2>待修正（2 处）</h2><span class="tiny">行级定位 · 修正后即可导入</span></div>
+      <div class="card" style="padding:6px 12px">
+        <table class="tb">
+          <thead><tr><th>位置</th><th>学生</th><th>问题</th><th>当前值</th><th style="width:200px">处理</th></tr></thead>
+          <tbody>
+            <tr id="fix1"><td class="small">第 17 行 · 第 14 题</td><td><b>谢婷婷</b></td><td class="small">得分 6 超出该题满分 5</td>
+              <td><input class="input" id="fix1-v" value="6" style="width:60px"></td>
+              <td><button class="btn sm" onclick="fix1()">保存修正</button> <span class="tiny">卷面分：5</span></td></tr>
+            <tr id="fix2"><td class="small">第 23 行</td><td><b>？</b></td><td class="small">学号 20240338 不在班级名单中</td>
+              <td><input class="input" value="20240338" style="width:90px" disabled></td>
+              <td><select class="select" id="fix2-sel"><option value="">匹配建议…</option><option>方远（学号相近 20253140）</option><option>标记为名单外，跳过</option></select>
+                  <button class="btn sm" onclick="fix2()">应用</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="q-head"><div class="q-chip" style="background:var(--t3)">▽</div><h2>数据预览（前 5 行）</h2><span class="tiny">每格 = 该生该题得分率，颜色随知识点难度画像</span></div>
+      <div class="card" style="padding:6px 12px">
+        <table class="tb"><thead><tr><th>学生</th><th>Q1</th><th>Q2</th><th>Q3</th><th>…</th><th>Q14</th><th>…</th><th>Q25</th><th>总分</th></tr></thead>
+        <tbody>
+          <tr><td><b>李想</b></td><td>5/5</td><td>4/4</td><td>3/3</td><td class="tiny">…</td><td style="color:var(--risk-high)">1/5</td><td class="tiny">…</td><td>6/8</td><td><b>82</b>/120</td></tr>
+          <tr><td><b>杨帆</b></td><td>5/5</td><td>4/4</td><td>3/3</td><td class="tiny">…</td><td>5/5</td><td class="tiny">…</td><td>8/8</td><td><b>113</b>/120</td></tr>
+          <tr><td><b>陈杰</b></td><td style="color:var(--risk-high)">2/5</td><td style="color:var(--risk-high)">1/4</td><td>2/3</td><td class="tiny">…</td><td style="color:var(--risk-high)">0/5</td><td class="tiny">…</td><td style="color:var(--risk-watch)">3/8</td><td><b>54</b>/120</td></tr>
+          <tr><td><b>刘婷</b></td><td>5/5</td><td>4/4</td><td>3/3</td><td class="tiny">…</td><td>4/5</td><td class="tiny">…</td><td style="color:var(--risk-high)">2/8</td><td><b>96</b>/120</td></tr>
+          <tr><td><b>王雪</b></td><td>4/5</td><td>4/4</td><td>3/3</td><td class="tiny">…</td><td style="color:var(--risk-high)">1/5</td><td class="tiny">…</td><td>5/8</td><td><b>77</b>/120</td></tr>
+        </tbody></table>
+      </div>
+
+      <div class="row" style="margin-top:16px">
+        <button class="btn ghost" onclick="toast('返回上一步（保留修正）')">← 返回修改</button>
+        <button class="btn" id="commit" disabled onclick="doCommit()">确认导入 42 × 25 = <b>1,050 条作答事件</b></button>
+        <span class="tiny" id="commit-hint">请先处理上方 2 处待修正</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="mock.js"></script>
+<script>
+let fixed=0;
+function refresh(){const ok=fixed>=2;
+  document.getElementById('commit').disabled=!ok;
+  document.getElementById('commit-hint').textContent=ok?'导入后自动触发：掌握度更新 → 画像刷新 → 异常识别':'请先处理上方 '+(2-fixed)+' 处待修正';}
+function fix1(){const v=document.getElementById('fix1-v').value.trim();
+  if(+v>5){toast('仍超出满分 5，请检查');return}
+  document.getElementById('fix1').style.opacity=.5;
+  document.getElementById('fix1').querySelector('button').disabled=true;fixed++;refresh();toast('已修正：谢婷婷 Q14 = '+v)}
+function fix2(){const v=document.getElementById('fix2-sel').value;
+  if(!v){toast('请选择处理方式');return}
+  document.getElementById('fix2').style.opacity=.5;
+  document.getElementById('fix2').querySelector('button').disabled=true;fixed++;refresh();toast('已处理：'+v)}
+
+function doCommit(){
+  document.getElementById('page').innerHTML=`
+  <div class="steps">
+    <div class="step done"><span class="n">✓</span>选择考试</div>
+    <div class="step done"><span class="n">✓</span>上传 Excel</div>
+    <div class="step done"><span class="n">✓</span>校验预览</div>
+    <div class="step act"><span class="n">4</span>导入完成</div>
+  </div>
+  <div class="card" style="max-width:640px;margin:40px auto">
+    <h3 style="justify-content:center;font-size:16px">⏳ 正在处理（batch: 8f3a…）</h3>
+    <div class="prog" style="margin:18px 0 22px">
+      <div class="pi done" id="p1"><span class="ic"></span>写入 1,050 条作答事件（append-only · 可整批撤销）</div>
+      <div class="pi" id="p2"><span class="ic"></span>掌握度引擎：按知识点权重分摊证据并更新 M / C</div>
+      <div class="pi" id="p3"><span class="ic"></span>画像刷新 · 异常识别（Exception-based）</div>
+    </div>
+    <div class="row" style="justify-content:center">
+      <a class="btn" href="index.html" id="go" style="visibility:hidden">查看班级看板 →</a>
+    </div>
+  </div>`;
+  const step=(id,delay)=>setTimeout(()=>{document.getElementById(id).classList.add('run');
+    setTimeout(()=>{document.getElementById(id).classList.remove('run');document.getElementById(id).classList.add('done');
+      if(id=='p3')document.getElementById('go').style.visibility='visible';},delay)},0);
+  setTimeout(()=>step('p1',700),200);
+  setTimeout(()=>step('p2',1200),1300);
+  setTimeout(()=>step('p3',1000),2900);
+}
+refresh();
+</script>
+</body>
+</html>

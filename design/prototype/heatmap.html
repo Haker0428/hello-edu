@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>班级知识热力图 · AI 自适应教学平台</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">🎓 <em>自适应教学平台</em></div>
+    <div class="side-class"><b>初一(3)班 · 数学</b><br>人教版七年级上册 · 42 名学生</div>
+    <nav>
+      <a href="index.html">◉ 教学首页</a>
+      <a href="heatmap.html" class="active">▦ 班级知识热力图</a>
+      <a href="student.html">👤 学生画像</a>
+      <div class="nav-group">数据接入</div>
+      <a href="paper.html">📄 试卷接入 <span class="dot" title="4 题待确认"></span></a>
+      <a href="score-import.html">📊 成绩导入</a>
+      <a href="bank.html">🗂 题库管理</a>
+      <div class="nav-group">教学动作</div>
+      <a href="practice.html">✎ 练习生成</a>
+      <a href="paper-editor.html">📝 试卷编辑器</a>
+    </nav>
+    <div class="side-foot">P1 原型 v0.1 · 2026-09-30</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <h1>班级知识热力图</h1><span class="sub">色块 = 掌握度 M · 角标🟠 = 低置信度（数据不足/可能遗忘）· 点击格子看证据链</span>
+      <div class="spacer"></div>
+      <select class="select"><option>初一(3)班</option><option>初一(5)班</option></select>
+      <div class="avatar">王</div>
+      <div class="who">王老师<small>学科教师 · 数学</small></div>
+    </div>
+
+    <div class="content">
+      <div class="row" style="margin-bottom:12px;flex-wrap:wrap">
+        <div class="btn sm ghost" style="cursor:default">视图：</div>
+        <button class="btn sm" id="v-stu">学生 × 知识点</button>
+        <button class="btn sm ghost" id="v-kp">知识点汇总</button>
+        <div style="flex:1"></div>
+        <input class="input" id="search" placeholder="搜索学生姓名…" style="width:160px">
+      </div>
+
+      <!-- 学生×知识点 视图 -->
+      <div id="view-stu">
+        <div class="legend">
+          <span class="lg"><span class="sw" style="background:repeating-linear-gradient(45deg,rgba(148,170,220,.25) 0 4px,transparent 4px 8px)"></span>未学习</span>
+          <span class="lg"><span class="sw" style="background:var(--m-weak)"></span>未掌握 &lt;40</span>
+          <span class="lg"><span class="sw" style="background:var(--m-learning)"></span>学习中 40-59</span>
+          <span class="lg"><span class="sw" style="background:var(--m-basic)"></span>初步掌握 60-74</span>
+          <span class="lg"><span class="sw" style="background:var(--m-skilled)"></span>熟练 75-89</span>
+          <span class="lg"><span class="sw" style="background:var(--m-stable)"></span>稳定掌握 ≥90</span>
+          <span class="lg"><span class="badge-dot" style="background:#ff9800"></span>低置信度（建议复习检测）</span>
+          <span class="tiny" style="margin-left:auto">数据截至 10-28 月考导入 · Mastery V1（指数更新）</span>
+        </div>
+        <div class="hud-frame"><div class="hm-wrap"><table class="hm" id="hm"></table></div></div>
+      </div>
+
+      <!-- 知识点汇总视图 -->
+      <div id="view-kp" style="display:none">
+        <div class="card" style="padding:6px 12px">
+          <table class="tb">
+            <thead><tr><th>知识点</th><th>章节</th><th style="width:260px">班级平均掌握</th><th>未掌握人数</th><th>诊断</th><th style="width:180px">建议动作</th></tr></thead>
+            <tbody id="kp-list"></tbody>
+          </table>
+        </div>
+        <div class="callout blue" style="margin-top:12px">💡 判读原则：<b>班级均值低且分布集中</b> → 全班性教学问题（课堂重讲）；<b>均值尚可但少数人未掌握</b> → 个别补差（个性化练习）；<b>前置链薄弱</b> → 先做前置诊断，不反复刷高层题。</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 证据链抽屉 -->
+<div id="mask" onclick="closeDrawer()"></div>
+<div id="drawer">
+  <div class="dr-head">
+    <div>
+      <div style="font-size:15px;font-weight:600" id="dr-title"></div>
+      <div class="tiny" id="dr-sub"></div>
+    </div>
+    <button class="x" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="dr-body" id="dr-body"></div>
+  <div class="dr-actions">
+    <button class="btn sm" onclick="toast('原型演示：生成该生专项练习')">生成专项练习</button>
+    <a class="btn sm ghost" href="student.html" id="dr-profile">查看完整画像</a>
+    <button class="btn sm ghost" onclick="toast('已标记处理，今日不再提示')">标记已处理</button>
+  </div>
+</div>
+
+<script src="mock.js"></script>
+<script>
+/* ---------- 渲染热力图 ---------- */
+function renderHM(filterCh,search){
+  const kps=KPS.map((k,i)=>({...k,ki:i})).filter(k=>!filterCh||k.ch==filterCh);
+  let html='<thead><tr class="ch"><th class="stu" rowspan="2">学生</th>';
+  let band='',span=0;
+  kps.forEach((k,idx)=>{
+    if(k.ch!=band){ if(span)html+=`<th colspan="${span}">${band}</th>`; band=k.ch; span=0; }
+    span++;
+    if(idx==kps.length-1)html+=`<th colspan="${span}">${band}</th>`;
+  });
+  html+='</tr><tr class="kph">';
+  html+=kps.map(k=>`<th><span style="writing-mode:vertical-rl;letter-spacing:.08em">${k.name}${k.pr.length?' ⤴':''}</span></th>`).join('');
+  html+='</tr></thead><tbody>';
+  STUDENTS.filter(s=>!search||s.name.includes(search)).forEach(s=>{
+    html+=`<tr><td class="stu"><span class="badge-dot ${s.risk=='high'?'rh':s.risk=='watch'?'rw':'rok'}" style="margin-right:5px"></span>${s.name}</td>`;
+    kps.forEach(k=>{
+      const c=s.cells[k.ki];
+      if(!c){html+=`<td class="cell none" title="${s.name} · ${k.name}：未学习（暂无作答数据）"></td>`;return}
+      const lv=levelOf(c.m);
+      html+=`<td class="cell ${lv.key}${c.c<55?' lowc':''}" data-si="${s.i}" data-ki="${k.ki}"
+        title="${s.name} · ${k.name}\nM ${c.m} / C ${c.c} · ${c.n} 条证据">${c.m}</td>`;
+    });
+    html+='</tr>';
+  });
+  document.getElementById('hm').innerHTML=html+'</tbody>';
+}
+document.getElementById('hm').addEventListener('click',e=>{
+  const td=e.target.closest('td.cell'); if(!td||td.classList.contains('none'))return;
+  openDrawer(+td.dataset.si,+td.dataset.ki);
+});
+
+/* ---------- 知识点汇总视图 ---------- */
+function renderKP(){
+  document.getElementById('kp-list').innerHTML=KPS.map((k,ki)=>{
+    const avg=avgByKp(ki),wc=weakCount(ki),lv=levelOf(avg);
+    const diag=avg<60?`<span class="tag red">全班性薄弱</span>`:wc>=5?`<span class="tag amber">${wc} 人未掌握</span>`:`<span class="tag green">健康</span>`;
+    const act=avg<60?`<a class="btn sm" href="practice.html">课堂重讲练习</a>`:wc>=5?`<a class="btn sm ghost" href="practice.html">个别补差</a>`:`<span class="tiny">—</span>`;
+    return `<tr>
+      <td><b>${k.name}</b>${k.pr.length?` <span class="tiny">⤴ 前置</span>`:''}</td>
+      <td class="small muted">${k.ch}</td>
+      <td><div class="row"><div class="bar"><i style="width:${avg}%;background:var(--m-${lv.key})"></i></div><b class="small" style="width:30px">${avg}</b></div></td>
+      <td class="small">${wc} 人</td><td>${diag}</td><td style="text-align:right">${act}</td></tr>`;
+  }).join('');
+}
+
+/* ---------- 证据链抽屉 ---------- */
+function openDrawer(si,ki){
+  const s=STUDENTS[si],k=KPS[ki],cell=s.cells[ki];
+  const lv=levelOf(cell.m);
+  document.getElementById('dr-title').textContent=`${s.name} · ${k.name}`;
+  document.getElementById('dr-sub').textContent=`${k.ch} · 数据截至 10-28`;
+  document.getElementById('dr-profile').href=`student.html?student=${si}`;
+  let h=`
+  <div class="dr-sec">
+    <div class="row" style="gap:8px">
+      <span class="lvl ${lv.key}">${lv.label}</span>
+      <b style="font-size:20px">${cell.m}</b><span class="tiny">Mastery</span>
+      <span class="tag ${cell.c<55?'amber':'gray'}">置信度 ${cell.c}</span>
+      <span class="tag gray">${cell.n} 条证据</span>
+    </div>
+  </div>`;
+  /* 前置链诊断 */
+  const chain=prereqChain(ki);
+  if(chain.length>1){
+    h+=`<div class="dr-sec"><h4>前置知识链（向下找断点）</h4><div class="chain">`;
+    h+=chain.map(ci=>{
+      const cc=s.cells[ci],mm=cc?cc.m:null,brk=mm!=null&&mm<60&&ci!=ki;
+      return `<span class="node ${brk?'brk':''}">${KPS[ci].name} <b>${mm==null?'—':mm}</b>${brk?' ⚠':''}</span>`;
+    }).join('<span class="arr">→</span>');
+    h+=`</div><div class="tiny" style="margin-top:6px">⚠ 标记节点为前置断点（&lt;60）：直接刷「${k.name}」高层题收效有限，建议先补前置。</div></div>`;
+  }
+  /* 证据链 */
+  const evs=evidenceFor(si,ki);
+  h+=`<div class="dr-sec"><h4>证据链（为什么是这个分数）· 最近 ${evs.length} 条</h4>`;
+  h+=evs.map(e=>`<div class="ev">
+    <div class="top"><span class="tag gray">${e.date}</span><span class="tag blue">${e.src}</span>
+      <b style="margin-left:auto">${e.score}/${e.max}</b></div>
+    <div class="stem">${e.stem}</div>
+    <div class="tiny">证据评分 E=${e.E} · 学习率 α=${e.alpha} · 题目标注置信度 ${e.mapConf}</div>
+  </div>`).join('');
+  h+=`</div><div class="tiny" style="color:var(--t3)">更新规则：M ← (1−α)·M + α·E · α 随置信度与数据量动态收紧，偶然失误不会导致画像剧烈波动。</div>`;
+  document.getElementById('dr-body').innerHTML=h;
+  document.getElementById('drawer').classList.add('on');
+  document.getElementById('mask').classList.add('on');
+}
+function closeDrawer(){
+  document.getElementById('drawer').classList.remove('on');
+  document.getElementById('mask').classList.remove('on');
+}
+
+/* ---------- 视图切换 / 搜索 / 章节过滤 ---------- */
+document.getElementById('v-stu').onclick=()=>{setView('stu')};
+document.getElementById('v-kp').onclick=()=>{setView('kp')};
+function setView(v){
+  document.getElementById('view-stu').style.display=v=='stu'?'':'none';
+  document.getElementById('view-kp').style.display=v=='kp'?'':'none';
+  document.getElementById('v-stu').className='btn sm'+(v=='stu'?'':' ghost');
+  document.getElementById('v-kp').className='btn sm'+(v=='kp'?'':' ghost');
+}
+document.getElementById('search').oninput=e=>renderHM(null,e.target.value.trim());
+renderHM(null,null);renderKP();
+
+/* 支持 index.html?view=kp 直达 */
+if(new URLSearchParams(location.search).get('view')=='kp')setView('kp');
+</script>
+</body>
+</html>

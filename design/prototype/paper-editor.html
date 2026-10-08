@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>试卷编辑器 · AI 自适应教学平台</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+/* ---------- 编辑器布局（深色外壳 + 白纸） ---------- */
+.layout{display:grid;grid-template-columns:196px 1fr 300px;height:calc(100vh - 56px)}
+.left,.right{background:#0c1322;overflow-y:auto}
+.left{border-right:1px solid var(--border)}
+.right{border-left:1px solid var(--border);display:flex;flex-direction:column}
+.center{overflow:auto;background:transparent;padding:22px 20px 60px}
+
+/* ---------- 排版工具栏 ---------- */
+.toolbar{position:sticky;top:0;z-index:20;background:rgba(9,14,28,.82);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);padding:8px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:12.5px}
+.toolbar::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:1px;
+  background:linear-gradient(90deg,transparent 10%,var(--hud) 50%,transparent 90%);
+  opacity:.55;filter:drop-shadow(0 0 5px var(--hud-dim))}
+.tg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.tg button{border:none;background:transparent;padding:4px 10px;cursor:pointer;font-size:12px;color:var(--t2);transition:all .18s}
+.tg button+button{border-left:1px solid var(--border)}
+.tg button.on{background:var(--grad);color:#fff;box-shadow:0 0 12px rgba(91,140,255,.4)}
+.tlabel{color:var(--t3);font-size:11px}
+#paper-title{border:1px solid transparent;border-radius:7px;padding:3px 8px;font-size:14px;font-weight:600;
+  width:240px;background:transparent;outline:none;color:var(--t1);transition:all .18s}
+#paper-title:hover,#paper-title:focus{border-color:var(--border-strong);background:rgba(255,255,255,.05)}
+.seg{display:inline-flex;border:1px solid var(--primary);border-radius:8px;overflow:hidden}
+.seg button{border:none;padding:4px 12px;cursor:pointer;font-size:12px;background:transparent;color:var(--primary);transition:all .18s}
+.seg button+button{border-left:1px solid rgba(91,140,255,.4)}
+.seg button.on{background:var(--grad);color:#fff;box-shadow:0 0 12px rgba(91,140,255,.4)}
+#save-status{font-size:11px;color:var(--t3)}
+
+/* ---------- 左栏 题目索引 ---------- */
+.lp{padding:12px 12px 8px}
+.lp h4{font-size:12px;color:var(--t3);font-weight:500;margin-bottom:8px;letter-spacing:.08em}
+.idx-item{padding:6px 8px;border-radius:6px;font-size:12px;cursor:pointer;color:var(--t2);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:all .15s}
+.idx-item:hover{background:rgba(255,255,255,.05);color:var(--t1)}
+.idx-sec{font-size:11px;color:var(--t3);margin:8px 0 2px;padding-left:4px}
+
+/* ---------- 右栏 题库 / 新建 ---------- */
+.rtabs{display:flex;border-bottom:1px solid var(--border)}
+.rtabs button{flex:1;border:none;background:transparent;padding:10px;cursor:pointer;font-size:13px;color:var(--t3);transition:all .18s}
+.rtabs button.on{color:var(--primary);font-weight:600;box-shadow:inset 0 -2px var(--primary)}
+.rbody{flex:1;overflow-y:auto;padding:12px}
+.bank-filters{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.bank-filters select,.bank-filters input{font-size:12px;padding:4px 6px}
+.bank-item{border:1px solid var(--border);border-radius:9px;padding:9px 11px;margin-bottom:8px;
+  background:rgba(148,170,220,.04);transition:all .2s var(--ease)}
+.bank-item:hover{border-color:var(--border-strong);transform:translateY(-2px)}
+.bank-item .bs{font-size:12.5px;line-height:1.5;margin-bottom:6px}
+.bank-item .bm{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.bank-item .add{margin-left:auto}
+.frm label{display:block;font-size:11.5px;color:var(--t2);margin:9px 0 4px}
+.frm .input,.frm textarea,.frm select{width:100%;font-size:13px}
+.frm textarea{resize:vertical;min-height:64px}
+
+/* ---------- 纸张与分页（白纸保持） ---------- */
+.page{background:#fff;color:#1a2233;box-shadow:0 24px 48px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.05);
+  display:flex;flex-direction:column;margin-bottom:20px;position:relative;animation:fx-in .5s var(--ease) both}
+.pg-head{text-align:center;border-bottom:1.5px solid #1a2233;padding-bottom:8px;margin-bottom:12px}
+.pg-head h2{font-size:17pt;letter-spacing:.12em;color:#101623}
+.pg-head .sub{font-size:10.5pt;margin-top:6px;display:flex;justify-content:space-between;color:#5a6577}
+.pg-head .sub.mid{justify-content:center;gap:2.5em}
+.pg-content{flex:1;overflow:hidden}
+.pg-foot{text-align:center;font-size:9pt;color:#5a6577;padding-top:6px}
+.sec-head{font-weight:600;margin:6px 0 10px}
+.q{position:relative;margin-bottom:14px}
+.q-stem{line-height:inherit}
+.q-opts{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px;padding:5px 0 0 1.8em;font-size:.95em}
+.q-space{margin-top:4px;border-radius:4px}
+body.mode-edit .q-space{background:repeating-linear-gradient(0deg,transparent 0 26px,rgba(127,150,200,.22) 26px 27px)}
+.q-ans{color:#c0392b;font-size:.92em;margin-top:5px;border-left:2px solid #f5b7b1;padding-left:8px}
+.q-ans .rub{color:#a06000}
+.q-tools{position:absolute;right:0;top:-9px;display:none;gap:2px;background:#101a30;border:1px solid var(--border-strong);
+  border-radius:7px;padding:2px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:5}
+body.mode-edit .q:hover{outline:1px dashed rgba(91,140,255,.6);outline-offset:3px;border-radius:4px}
+body.mode-edit .q:hover .q-tools{display:flex}
+.q-tools button,.q-tools input{border:none;background:transparent;cursor:pointer;font-size:12px;
+  color:var(--t2);padding:2px 6px;border-radius:4px}
+.q-tools button:hover{background:var(--primary-weak);color:var(--primary)}
+.q-tools input{width:38px;font-size:11px;text-align:center;border:1px solid var(--border)!important;color:var(--t1)}
+.q-kp{position:absolute;left:0;top:-8px;display:none;font-size:10px}
+body.mode-edit .q:hover .q-kp{display:inline-flex;gap:4px}
+.empty{border:1.5px dashed var(--border-strong);border-radius:12px;padding:30px;text-align:center;color:var(--t3);
+  font-size:13px;margin:40px 0;background:rgba(148,170,220,.03)}
+
+/* ---------- 打印 ---------- */
+@media print{
+  body{background:#fff}
+  body::before,body::after{display:none}
+  .side,.topbar,.toolbar,.left,.right{display:none!important}
+  .layout{display:block;height:auto}
+  .center{background:#fff;padding:0;overflow:visible;display:block}
+  .page{box-shadow:none;margin:0;break-after:page;animation:none}
+}
+</style>
+</head>
+<body class="mode-edit">
+<div class="app">
+  <aside class="side">
+    <div class="brand">🎓 <em>自适应教学平台</em></div>
+    <div class="side-class"><b>初一(3)班 · 数学</b><br>人教版七年级上册 · 42 名学生</div>
+    <nav>
+      <a href="index.html">◉ 教学首页</a>
+      <a href="heatmap.html">▦ 班级知识热力图</a>
+      <a href="student.html">👤 学生画像</a>
+      <div class="nav-group">数据接入</div>
+      <a href="paper.html">📄 试卷接入</a>
+      <a href="score-import.html">📊 成绩导入</a>
+      <a href="bank.html">🗂 题库管理</a>
+      <div class="nav-group">教学动作</div>
+      <a href="practice.html">✎ 练习生成</a>
+      <a href="paper-editor.html" class="active">📝 试卷编辑器</a>
+    </nav>
+    <div class="side-foot">P1 原型 v0.1 · 2026-09-30</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <h1>试卷编辑器</h1><span class="sub">手动组卷 · 排版 · 打印预览（AI 通道后续接入）</span>
+      <div class="spacer"></div>
+      <span id="save-status">已保存</span>
+      <button class="btn sm ghost" onclick="toast('原型演示：导出 Word')">导出 Word</button>
+      <button class="btn sm ghost" onclick="toast('已记录为作业 · 批改后请到「成绩导入」录入逐题得分，完成画像闭环')">📋 记录为作业</button>
+      <button class="btn sm ghost" onclick="window.print()">🖨 打印</button>
+      <button class="btn sm" onclick="toast('原型演示：导出 PDF（学生版+教师批改版）')">导出 PDF</button>
+    </div>
+
+    <!-- 排版工具栏 -->
+    <div class="toolbar">
+      <input id="paper-title" value="一元一次方程 · 随堂练习（一）" title="试卷标题">
+      <span class="tlabel">字号</span>
+      <div class="tg" id="tg-font">
+        <button data-v="12pt">小四</button><button data-v="10.5pt" class="on">五号</button><button data-v="9pt">小五</button>
+      </div>
+      <span class="tlabel">行距</span>
+      <div class="tg" id="tg-lh">
+        <button data-v="1.25">1.25</button><button data-v="1.5" class="on">1.5</button><button data-v="2">2.0</button>
+      </div>
+      <span class="tlabel">纸张</span>
+      <div class="tg" id="tg-paper">
+        <button data-v="210mm|297mm" class="on">A4</button><button data-v="297mm|420mm">A3</button>
+      </div>
+      <span class="tlabel">边距</span>
+      <div class="tg" id="tg-margin">
+        <button data-v="20mm" class="on">标准</button><button data-v="12mm">窄</button>
+      </div>
+      <span class="tlabel">页眉</span>
+      <div class="tg" id="tg-header"><button data-v="1" class="on">开</button><button data-v="0">关</button></div>
+      <div style="flex:1"></div>
+      <div class="seg" id="seg-view">
+        <button data-v="edit" class="on">编辑视图</button>
+        <button data-v="teacher">教师预览</button>
+        <button data-v="student">学生预览</button>
+      </div>
+    </div>
+
+    <div class="layout">
+      <!-- 左：题目索引 -->
+      <div class="left">
+        <div class="lp">
+          <h4>试卷结构</h4>
+          <div class="small" id="lp-total" style="margin-bottom:6px"></div>
+          <div id="lp-index"></div>
+        </div>
+      </div>
+
+      <!-- 中：分页纸张 -->
+      <div class="center" id="pages"></div>
+
+      <!-- 右：题库 / 新建 -->
+      <div class="right">
+        <div class="rtabs">
+          <button id="tab-bank" class="on" onclick="setTab('bank')">📚 题库选题</button>
+          <button id="tab-new" onclick="setTab('new')">✎ 新建题目</button>
+        </div>
+        <div class="rbody" id="rb-bank">
+          <div class="bank-filters">
+            <select id="f-kp"><option value="">全部知识点</option></select>
+            <select id="f-type"><option value="">全部题型</option><option value="choice">单选</option><option value="fill">填空</option><option value="solve">解答</option></select>
+          </div>
+          <input class="input" id="f-q" placeholder="搜索题干关键词…" style="margin-bottom:10px">
+          <div id="bank-list"></div>
+        </div>
+        <div class="rbody" id="rb-new" style="display:none">
+          <div class="frm">
+            <label>题型</label>
+            <select class="input" id="n-type" onchange="toggleOpts()">
+              <option value="choice">单选题</option><option value="fill">填空题</option><option value="solve" selected>解答题</option>
+            </select>
+            <label>题干（填空用 ____ 表示空位）</label>
+            <textarea class="input" id="n-stem" placeholder="例：解方程：3x + 5 = 2x − 1"></textarea>
+            <div id="n-opts" style="display:none">
+              <label>选项 A</label><input class="input" id="n-o0">
+              <label>选项 B</label><input class="input" id="n-o1">
+              <label>选项 C</label><input class="input" id="n-o2">
+              <label>选项 D</label><input class="input" id="n-o3">
+            </div>
+            <label>答案</label><input class="input" id="n-ans" placeholder="例：x = −6 或选项字母">
+            <label>知识点</label>
+            <select class="input" id="n-kp"></select>
+            <label>难度（1-5）</label>
+            <select class="input" id="n-diff"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option></select>
+            <label>分值</label><input class="input" id="n-score" type="number" value="4">
+            <div style="margin-top:14px"><button class="btn" style="width:100%;justify-content:center" onclick="addNew()">添加到试卷</button></div>
+            <div class="tiny" style="margin-top:8px">手动创建的题自动入本班题库（来源：教师创建），可用于后续组卷与画像。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="mock.js"></script>
+<script>
+/* ================= 数据 ================= */
+const TYPE_L={choice:'单选题',fill:'填空题',solve:'解答题'};
+const SEC_CN={choice:'一、单选题',fill:'二、填空题',solve:'三、解答题'};
+const ORDER=['choice','fill','solve'];
+
+const BANK=[
+ {type:'choice',stem:'下列方程中，是一元一次方程的是（　）',options:['x² − 2x = 3','2x − y = 5','3x + 6 = 9','1/x = 2'],answer:'C',kp:'一元一次方程概念',diff:1,score:3},
+ {type:'choice',stem:'方程 2x + 5 = 2x − 1 的解的情况是（　）',options:['x = 3','x = −3','无解','任意数'],answer:'C',kp:'等式性质',diff:2,score:3},
+ {type:'choice',stem:'解方程 3x − 6 = 0，移项正确的是（　）',options:['3x = −6','3x = 6','−3x = 6','x = 6'],answer:'B',kp:'移项',diff:1,score:3},
+ {type:'choice',stem:'解方程 x/2 = (x−1)/3，去分母正确的是（　）',options:['3x = 2(x − 1)','2x = 3(x − 1)','x = 2(x − 1)','3x = 2x − 1'],answer:'A',kp:'去分母',diff:2,score:3},
+ {type:'choice',stem:'某商品原价 a 元，涨价 20% 后售价为（　）',options:['0.2a','a + 20','1.2a','80% a'],answer:'C',kp:'实际问题列方程',diff:1,score:3},
+ {type:'fill',stem:'方程 3x + 5 = 2x − 1 的解是 x = ____。',answer:'−6',kp:'移项',diff:1,score:2},
+ {type:'fill',stem:'去括号并化简：2(3x − 4) − 3(x + 2) = ____。',answer:'3x − 14',kp:'去括号',diff:2,score:2},
+ {type:'fill',stem:'若 2x − 6 = 0，则 x = ____；此时 3x + 1 = ____。',answer:'3；10',kp:'移项',diff:1,score:2},
+ {type:'fill',stem:'当 x = ____ 时，代数式 4x − 7 与 3x + 2 的值相等。',answer:'9',kp:'移项',diff:2,score:2},
+ {type:'solve',stem:'解方程：3x + 5 = 2x − 1。',answer:'x = −6',rubric:'移项正确 2 分 · 合并同类项 1 分 · 结论 1 分',kp:'移项',diff:1,score:4,space:4},
+ {type:'solve',stem:'解方程：2(x − 3) = 3(x + 1) − 6。',answer:'x = −3',rubric:'去括号 2 分 · 移项合并 1 分 · 结论 1 分',kp:'去括号',diff:2,score:4,space:4},
+ {type:'solve',stem:'解方程：(x − 1)/3 = (2x + 1)/2。',answer:'x = −5',rubric:'去分母 2 分 · 去括号移项 1 分 · 结论 1 分',kp:'去分母',diff:2,score:4,space:4},
+ {type:'solve',stem:'某数的 3 倍比它本身大 5，求这个数。（设未知数、列方程并求解）',answer:'x = 2.5',rubric:'设未知数 1 分 · 列方程 2 分 · 求解 1 分',kp:'实际问题列方程',diff:2,score:4,space:5},
+];
+
+/* 预置试卷：单选4 + 填空3 + 解答3 */
+const paper={
+  title:'一元一次方程 · 随堂练习（一）',
+  settings:{font:'10.5pt',lh:'1.5',pw:'210mm',ph:'297mm',margin:'20mm',header:1},
+  questions:[0,1,2,3,5,6,7,9,10,11].map(i=>({...BANK[i],bankId:i}))
+};
+let mode='edit',uid=1000;
+
+/* ================= 渲染：分页引擎 ================= */
+function qEl(q,seq){
+  const d=document.createElement('div');d.className='q';
+  let h='';
+  if(mode==='edit'){
+    h+=`<div class="q-tools">
+      <input type="number" value="${q.score}" title="分值" onchange="setScore('${q.uid}',this.value)">
+      <button title="上移" onclick="move('${q.uid}',-1)">↑</button>
+      <button title="下移" onclick="move('${q.uid}',1)">↓</button>
+      <button title="复制" onclick="dup('${q.uid}')">⧉</button>
+      <button title="删除" onclick="del('${q.uid}')">✕</button>
+    </div>
+    <div class="q-kp"><span class="tag gray">${q.kp}</span></div>`;
+  }
+  h+=`<div class="q-stem" ${mode==='edit'?'contenteditable=true onblur="editStem(this)"':''}>${seq}. ${q.stem}</div>`;
+  if(q.type==='choice')h+=`<div class="q-opts">${q.options.map((o,i)=>`<div><b>${'ABCD'[i]}.</b>　${o}</div>`).join('')}</div>`;
+  if(q.type==='solve'&&mode!=='edit')h+=`<div class="q-space" style="height:${q.space||4}em"></div>`;
+  if(mode==='teacher')h+=`<div class="q-ans">【答案】${q.answer}${q.rubric?`<br><span class="rub">【评分点】${q.rubric}</span>`:''}</div>`;
+  d.innerHTML=h;
+  d.dataset.uid=q.uid;
+  return d;
+}
+function buildBlocks(){
+  const blocks=[];let seq=0;
+  ORDER.forEach(t=>{
+    const qs=paper.questions.filter(q=>q.type===t);
+    if(!qs.length)return;
+    const per=qs[0].score,every=qs.every(q=>q.score===per);
+    const h=document.createElement('div');h.className='sec-head';
+    h.textContent=`${SEC_CN[t]}（共 ${qs.length} 题${every?`，每题 ${per} 分`:''}）`;
+    h.dataset.sec=t;blocks.push(h);
+    qs.forEach(q=>{seq++;blocks.push(qEl(q,seq))});
+  });
+  return blocks;
+}
+function newPage(){
+  const p=document.createElement('div');p.className='page';
+  p.style.width=paper.settings.pw;p.style.height=paper.settings.ph;
+  p.style.padding=paper.settings.margin;
+  p.style.fontSize=paper.settings.font;
+  const first=!document.querySelector('.page');
+  let headHtml='';
+  if(paper.settings.header){
+    headHtml=`<div class="pg-head">
+      <h2>${paper.title}</h2>
+      ${first?`<div class="sub"><span>班级：＿＿＿＿＿＿</span><span>姓名：＿＿＿＿＿＿</span><span>日期：＿＿＿＿＿＿</span></div>
+      <div class="sub mid tiny" style="color:var(--t3)">满分 ${totalScore()} 分 · 考试时间 45 分钟</div>`:`<div class="tiny" style="color:var(--t3)">${paper.title}（续）</div>`}
+    </div>`;
+  }
+  p.innerHTML=`${headHtml}<div class="pg-content"></div><div class="pg-foot"></div>`;
+  document.getElementById('pages').appendChild(p);
+  return p.querySelector('.pg-content');
+}
+function renderPaper(){
+  document.getElementById('pages').innerHTML='';
+  if(!paper.questions.length){
+    document.getElementById('pages').innerHTML=
+      `<div class="empty">试卷还是空的<br><span class="tiny">从右侧「题库选题」添加，或切换到「新建题目」手动出题</span></div>`;
+    renderIndex();return;
+  }
+  let content=newPage();
+  for(const b of buildBlocks()){
+    content.appendChild(b);
+    if(content.scrollHeight>content.clientHeight&&content.children.length>1){
+      content=newPage();content.appendChild(b);
+    }
+  }
+  const pages=[...document.querySelectorAll('.page')];
+  pages.forEach((p,i)=>p.querySelector('.pg-foot').textContent=`第 ${i+1} 页 / 共 ${pages.length} 页`);
+  renderIndex();
+}
+function renderIndex(){
+  const n=paper.questions.length,s=totalScore();
+  document.getElementById('lp-total').innerHTML=`共 <b>${n}</b> 题 · 满分 <b>${s}</b> 分`;
+  let h='';let seq=0;
+  ORDER.forEach(t=>{
+    const qs=paper.questions.filter(q=>q.type===t);
+    if(!qs.length)return;
+    h+=`<div class="idx-sec">${SEC_CN[t]}（${qs.length}）</div>`;
+    qs.forEach(q=>{seq++;h+=`<div class="idx-item" onclick="jump(${seq})">${seq}. ${q.stem.slice(0,14)}…</div>`});
+  });
+  document.getElementById('lp-index').innerHTML=h;
+}
+function jump(seq){
+  const els=[...document.querySelectorAll('.page .q')];
+  const el=els[seq-1];if(el)el.scrollIntoView({behavior:'smooth',block:'center'});
+}
+function totalScore(){return paper.questions.reduce((a,q)=>a+(+q.score||0),0)}
+
+/* ================= 编辑操作 ================= */
+function findQ(uid){return paper.questions.find(q=>q.uid==uid)}
+function editStem(el){
+  const q=findQ(el.closest('.q').dataset.uid);
+  q.stem=el.innerText.replace(/^\d+\.\s*/,'');
+  dirty();renderPaper();
+}
+function setScore(uid,v){findQ(uid).score=Math.max(0,+v||0);dirty();renderPaper()}
+function move(uid,d){
+  const i=paper.questions.findIndex(q=>q.uid==uid);
+  const q=paper.questions[i];
+  let j=i+d;
+  while(j>=0&&j<paper.questions.length&&paper.questions[j].type!==q.type)j+=d;
+  if(j<0||j>=paper.questions.length)return;
+  paper.questions.splice(i,1);paper.questions.splice(j,0,q);
+  dirty();renderPaper();
+}
+function dup(uid){
+  const i=paper.questions.findIndex(q=>q.uid==uid);
+  const q={...paper.questions[i],uid:'q'+(uid0++)};
+  paper.questions.splice(i+1,0,q);dirty();renderPaper();
+}
+let uid0=1000;
+function del(uid){paper.questions=paper.questions.filter(q=>q.uid!=uid);dirty();renderPaper()}
+function addFromBank(bankId){
+  const b=BANK[bankId];
+  paper.questions.push({...b,bankId,uid:'q'+(uid0++)});
+  dirty();renderPaper();toast('已添加到试卷末尾');
+  document.getElementById('pages').scrollTop=1e9;
+}
+
+/* ================= 题库面板 ================= */
+function renderBank(){
+  const kp=document.getElementById('f-kp').value,
+        ty=document.getElementById('f-type').value,
+        kw=document.getElementById('f-q').value.trim();
+  document.getElementById('bank-list').innerHTML=BANK.map((b,i)=>({b,i}))
+    .filter(({b})=>(!kp||b.kp===kp)&&(!ty||b.type===ty)&&(!kw||b.stem.includes(kw)))
+    .map(({b,i})=>`<div class="bank-item">
+      <div class="bs">${b.stem}</div>
+      <div class="bm">
+        <span class="tag gray">${TYPE_L[b.type]}</span>
+        <span class="tag blue">${b.kp}</span>
+        <span class="dots" title="难度">${'●'.repeat(b.diff)}${'○'.repeat(5-b.diff)}</span>
+        <span class="tiny">${b.score} 分</span>
+        <button class="btn sm add" onclick="addFromBank(${i})">＋ 加入</button>
+      </div></div>`).join('')||'<div class="empty" style="margin:0">无匹配题目</div>';
+}
+
+/* ================= 新建题目 ================= */
+function addNew(){
+  const stem=document.getElementById('n-stem').value.trim();
+  if(!stem){toast('请填写题干');return}
+  const type=document.getElementById('n-type').value;
+  const q={type,stem,answer:document.getElementById('n-ans').value||'（待补）',
+    kp:document.getElementById('n-kp').value,diff:+document.getElementById('n-diff').value,
+    score:+document.getElementById('n-score').value||4,space:5,uid:'q'+(uid0++)};
+  if(type==='choice'){
+    q.options=[0,1,2,3].map(k=>document.getElementById('n-o'+k).value||'');
+    if(!q.options[0]){toast('单选题请至少填写选项 A');return}
+  }
+  paper.questions.push(q);
+  ['n-stem','n-ans','n-o0','n-o1','n-o2','n-o3'].forEach(id=>document.getElementById(id).value='');
+  dirty();renderPaper();toast('已添加（同时进入本班题库）');
+}
+function toggleOpts(){document.getElementById('n-opts').style.display=document.getElementById('n-type').value==='choice'?'':'none'}
+function setTab(t){
+  document.getElementById('rb-bank').style.display=t==='bank'?'':'none';
+  document.getElementById('rb-new').style.display=t==='new'?'':'none';
+  document.getElementById('tab-bank').className=t==='bank'?'on':'';
+  document.getElementById('tab-new').className=t==='new'?'on':'';
+}
+
+/* ================= 工具栏 ================= */
+function bindToggle(id,fn){
+  document.getElementById(id).querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    document.getElementById(id).querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');fn(b.dataset.v);dirty();renderPaper();
+  });
+}
+bindToggle('tg-font',v=>paper.settings.font=v);
+bindToggle('tg-lh',v=>{paper.settings.lh=v;document.getElementById('pages').style.lineHeight=v});
+bindToggle('tg-paper',v=>{[paper.settings.pw,paper.settings.ph]=v.split('|')});
+bindToggle('tg-margin',v=>paper.settings.margin=v);
+bindToggle('tg-header',v=>paper.settings.header=+v);
+document.getElementById('seg-view').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  document.getElementById('seg-view').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');mode=b.dataset.v;
+  document.body.className='mode-'+mode;renderPaper();
+});
+document.getElementById('paper-title').oninput=e=>{paper.title=e.target.value;dirty();renderPaper()};
+['f-kp','f-type'].forEach(id=>document.getElementById(id).onchange=renderBank);
+document.getElementById('f-q').oninput=renderBank;
+
+/* ================= 保存状态（模拟） ================= */
+let dirtyTimer;
+function dirty(){
+  document.getElementById('save-status').textContent='未保存…';
+  clearTimeout(dirtyTimer);
+  dirtyTimer=setTimeout(()=>document.getElementById('save-status').textContent='已保存',900);
+}
+
+/* ================= 初始化 ================= */
+[...new Set(BANK.map(b=>b.kp))].forEach(kp=>{
+  document.getElementById('f-kp').insertAdjacentHTML('beforeend',`<option>${kp}</option>`);
+  document.getElementById('n-kp').insertAdjacentHTML('beforeend',`<option>${kp}</option>`);
+});
+paper.questions.forEach(q=>q.uid='q'+(uid0++));
+renderBank();renderPaper();
+</script>
+</body>
+</html>
